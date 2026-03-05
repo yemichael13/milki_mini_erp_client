@@ -1,16 +1,76 @@
-# React + Vite
+# Mini ERP - Frontend Client
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite + Tailwind CSS frontend for the Mini ERP system.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- 🔐 Authentication (Login/Register)
+- 👥 Customer Management
+- 💼 Transaction Workflows (Sales/Production/Procurement)
+- 💰 Payment Recording
+- 📊 Financial Reports
+- 👤 User Management (Admin/Manager)
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **React 19** - UI library
+- **Vite** - Build tool
+- **Tailwind CSS** - Styling
+- **React Router** - Navigation
+- **Axios** - HTTP client
 
-## Expanding the ESLint configuration
+## Setup
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+1. Install dependencies:
+```bash
+npm install
+```
+
+2. Create `.env` file (copy from `.env.example`):
+```
+VITE_API_URL=http://localhost:5000/api
+```
+
+3. Start development server:
+```bash
+npm run dev
+```
+
+The app will be available at `http://localhost:5173`
+
+## Build
+
+```bash
+npm run build
+```
+
+## Project Structure
+
+```
+src/
+├── components/     # Reusable components (Layout, ProtectedRoute)
+├── contexts/       # React contexts (AuthContext)
+├── lib/            # Utilities (API client)
+├── pages/          # Page components
+│   ├── Login.jsx
+│   ├── Register.jsx
+│   ├── Dashboard.jsx
+│   ├── Customers.jsx
+│   ├── Transactions.jsx
+│   ├── Payments.jsx
+│   ├── Reports.jsx
+│   └── Users.jsx
+├── App.jsx         # Main app component with routing
+└── main.jsx        # Entry point
+```
+
+## Role-Based Access
+
+- **Sales/Production/Procurement**: Can create transactions and manage customers
+- **Accountant**: Can approve transactions and record payments
+- **Manager**: Can approve transactions and view reports
+- **Admin**: Full access including user management
+
+## API Integration
+
+The frontend communicates with the backend API at `VITE_API_URL`. All API requests include JWT tokens from localStorage for authentication.
