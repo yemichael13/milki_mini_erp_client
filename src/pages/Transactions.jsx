@@ -16,6 +16,10 @@ const Transactions = ({ workflow }) => {
     description: '',
     payment_type: 'credit',
   });
+  const [receiptFile, setReceiptFile] = useState(null);
+  const [actionModal, setActionModal] = useState({ open: false, txId: null, type: '' });
+  const [approvalDesc, setApprovalDesc] = useState('');
+  const [approvalFile, setApprovalFile] = useState(null);
   const [statusFilter, setStatusFilter] = useState('');
 
   useEffect(() => {
@@ -64,28 +68,28 @@ const Transactions = ({ workflow }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!receiptFile) {
+      alert('Receipt image is required');
+      return;
+    }
     try {
-      const payload =
-        workflow === 'sales'
-          ? {
-              customer_id: formData.customer_id,
-              amount: formData.amount,
-              description: formData.description,
-              payment_type: formData.payment_type,
-            }
-          : workflow === 'procurement'
-            ? {
-                supplier_id: formData.supplier_id,
-                amount: formData.amount,
-                description: formData.description,
-                payment_type: formData.payment_type,
-              }
-            : {
-                amount: formData.amount,
-                description: formData.description,
-              };
+      const data = new FormData();
+      if (workflow === 'sales') {
+        data.append('customer_id', formData.customer_id);
+      }
+      if (workflow === 'procurement') {
+        data.append('supplier_id', formData.supplier_id);
+      }
+      data.append('amount', formData.amount);
+      data.append('description', formData.description);
+      if (workflow === 'sales' || workflow === 'procurement') {
+        data.append('payment_type', formData.payment_type);
+      }
+      data.append('receipt', receiptFile);
 
-      await api.post(`/${workflow}`, payload);
+      await api.post(`/${workflow}`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
       setShowModal(false);
       setFormData({
         customer_id: '',
@@ -94,30 +98,48 @@ const Transactions = ({ workflow }) => {
         description: '',
         payment_type: 'credit',
       });
+      setReceiptFile(null);
       fetchTransactions();
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to create transaction');
     }
   };
 
-  const handleApprove = async (id, type) => {
-    try {
-      await api.post(`/${workflow}/${id}/${type}`);
-      fetchTransactions();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to approve');
-    }
+  const handleApprove = (id, type) => {
+    setActionModal({ open: true, txId: id, type });
   };
 
-  const handleReject = async (id) => {
-    const reason = prompt('Rejection reason:');
-    if (reason !== null) {
-      try {
-        await api.post(`/${workflow}/${id}/reject`, { rejection_reason: reason });
-        fetchTransactions();
-      } catch (err) {
-        alert(err.response?.data?.message || 'Failed to reject');
+  const handleReject = (id) => {
+    setActionModal({ open: true, txId: id, type: 'reject' });
+  };
+
+  const closeActionModal = () => {
+    setActionModal({ open: false, txId: null, type: '' });
+    setApprovalDesc('');
+    setApprovalFile(null);
+  };
+
+  const handleActionSubmit = async (e) => {
+    e.preventDefault();
+    if (!approvalDesc || !approvalFile) {
+      alert('Description and receipt are required');
+      return;
+    }
+    try {
+      const data = new FormData();
+      data.append('description', approvalDesc);
+      data.append('receipt', approvalFile);
+      let path;
+      if (actionModal.type === 'reject') {
+        path = `/${workflow}/${actionModal.txId}/reject`;
+      } else {
+        path = `/${workflow}/${actionModal.txId}/${actionModal.type}`;
       }
+      await api.post(path, data, { headers: { 'Content-Type': 'multipart/form-data' } });
+      closeActionModal();
+      fetchTransactions();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to submit action');
     }
   };
 
@@ -147,10 +169,9 @@ const Transactions = ({ workflow }) => {
           onChange={(e) => setStatusFilter(e.target.value)}
           className="px-4 py-2 border border-gray-300 rounded-md"
         >
-          <option value="">All Status</option>
+          <option value="">All</option>
           <option value="pending">Pending</option>
-          <option value="accountant_approved">Accountant Approved</option>
-          <option value="manager_approved">Manager Approved</option>
+          <option value="approved">Approved</option>
           <option value="rejected">Rejected</option>
         </select>
       </div>
@@ -287,6 +308,16 @@ const Transactions = ({ workflow }) => {
                   rows={3}
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Receipt *</label>
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  required
+                  onChange={(e) => setReceiptFile(e.target.files[0])}
+                  className="mt-1 block w-full"
+                />
+              </div>
               <div className="flex justify-end space-x-2">
                 <button
                   type="button"
@@ -300,6 +331,52 @@ const Transactions = ({ workflow }) => {
                   className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
                 >
                   Create
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {actionModal.open && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <h3 className="text-lg font-bold mb-4">
+              {actionModal.type === 'reject' ? 'Reject Transaction' : 'Approval'}
+            </h3>
+            <form onSubmit={handleActionSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Description *</label>
+                <textarea
+                  required
+                  value={approvalDesc}
+                  onChange={(e) => setApprovalDesc(e.target.value)}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                  rows={3}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Receipt *</label>
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  required
+                  onChange={(e) => setApprovalFile(e.target.files[0])}
+                  className="mt-1 block w-full"
+                />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={closeActionModal}
+                  className="px-4 py-2 border border-gray-300 rounded-md"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                >
+                  Submit
                 </button>
               </div>
             </form>

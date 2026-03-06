@@ -9,6 +9,7 @@ import Transactions from './pages/Transactions';
 import Payments from './pages/Payments';
 import Reports from './pages/Reports';
 import Users from './pages/Users';
+import Suppliers from './pages/Suppliers';
 
 const AppRoutes = () => {
   const { user } = useAuth();
@@ -69,7 +70,7 @@ const AppRoutes = () => {
       <Route
         path="/payments"
         element={
-          <ProtectedRoute allowedRoles={['accountant', 'general_manager']}>
+          <ProtectedRoute allowedRoles={["sales_officer", "procurement_officer"]}>
             <Layout>
               <Payments />
             </Layout>
@@ -79,7 +80,7 @@ const AppRoutes = () => {
       <Route
         path="/reports"
         element={
-          <ProtectedRoute allowedRoles={['accountant', 'general_manager']}>
+          <ProtectedRoute allowedRoles={["general_manager"]}>
             <Layout>
               <Reports />
             </Layout>
@@ -95,8 +96,16 @@ const AppRoutes = () => {
             </Layout>
           </ProtectedRoute>
         }
-      />
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      />      <Route
+        path="/suppliers"
+        element={
+          <ProtectedRoute allowedRoles={["procurement_officer", "general_manager"]}>
+            <Layout>
+              <Suppliers />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />      <Route path="/" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
 };

@@ -31,6 +31,7 @@ const Layout = ({ children }) => {
                 >
                   Dashboard
                 </Link>
+                {/* Customers shown to sales, accountant, general manager */}
                 {canAccess(['sales_officer', 'accountant', 'general_manager']) && (
                   <Link
                     to="/customers"
@@ -39,6 +40,16 @@ const Layout = ({ children }) => {
                     Customers
                   </Link>
                 )}
+                {/* Suppliers shown to procurement officer and general manager */}
+                {canAccess(['procurement_officer', 'general_manager']) && (
+                  <Link
+                    to="/suppliers"
+                    className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                  >
+                    Suppliers
+                  </Link>
+                )}
+                {/* Sales workflow link */}
                 {canAccess(['sales_officer', 'accountant', 'general_manager']) && (
                   <Link
                     to="/sales"
@@ -47,6 +58,7 @@ const Layout = ({ children }) => {
                     Sales
                   </Link>
                 )}
+                {/* Production workflow link */}
                 {canAccess(['production_officer', 'accountant', 'general_manager']) && (
                   <Link
                     to="/production"
@@ -55,6 +67,7 @@ const Layout = ({ children }) => {
                     Production
                   </Link>
                 )}
+                {/* Procurement workflow link */}
                 {canAccess(['procurement_officer', 'accountant', 'general_manager']) && (
                   <Link
                     to="/procurement"
@@ -63,21 +76,23 @@ const Layout = ({ children }) => {
                     Procurement
                   </Link>
                 )}
-                {canAccess(['accountant', 'general_manager']) && (
-                  <>
-                    <Link
-                      to="/payments"
-                      className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                    >
-                      Payments
-                    </Link>
-                    <Link
-                      to="/reports"
-                      className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                    >
-                      Reports
-                    </Link>
-                  </>
+                {/* Payments only for sales or procurement officers */}
+                {canAccess(['sales_officer', 'procurement_officer']) && (
+                  <Link
+                    to="/payments"
+                    className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                  >
+                    Payments
+                  </Link>
+                )}
+                {/* Reports only for general manager */}
+                {canAccess(['general_manager']) && (
+                  <Link
+                    to="/reports"
+                    className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                  >
+                    Reports
+                  </Link>
                 )}
                 {canAccess(['admin']) && (
                   <Link
