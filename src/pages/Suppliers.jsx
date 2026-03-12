@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import api from '../lib/api';
 
 const Suppliers = () => {
+  const { user } = useAuth();
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', address: '' });
   const [search, setSearch] = useState('');
+  const canCreate = user?.role === 'procurement';
 
   useEffect(() => {
     fetchSuppliers();
@@ -53,12 +56,14 @@ const Suppliers = () => {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Suppliers</h1>
-        <button
-          onClick={() => setShowModal(true)}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
-        >
-          Add Supplier
-        </button>
+        {canCreate && (
+          <button
+            onClick={() => setShowModal(true)}
+            className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
+          >
+            Add Supplier
+          </button>
+        )}
       </div>
       <div className="mb-4">
         <input
@@ -93,7 +98,7 @@ const Suppliers = () => {
           ))}
         </ul>
       </div>
-      {showModal && (
+      {showModal && canCreate && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
           <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
             <h3 className="text-lg font-bold mb-4">Add Supplier</h3>

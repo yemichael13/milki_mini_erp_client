@@ -12,13 +12,25 @@ export const useAuth = () => {
   return context;
 };
 
+// utility to normalize role strings (strip _officer suffix)
+export const normalizeRole = (role) => {
+  if (!role) return role;
+  if (role === 'admin') return 'system_admin';
+  if (role.endsWith('_officer')) {
+    return role.split('_')[0];
+  }
+  return role;
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     const token = localStorage.getItem('token');
     const savedUser = localStorage.getItem('user');
     if (token && savedUser) {
       try {
-        return JSON.parse(savedUser);
+        const u = JSON.parse(savedUser);
+        u.role = normalizeRole(u.role);
+        return u;
       } catch {
         return null;
       }
@@ -38,8 +50,10 @@ export const AuthProvider = ({ children }) => {
       // Verify token is still valid
       api.get('/auth/me')
         .then((res) => {
-          setUser(res.data);
-          localStorage.setItem('user', JSON.stringify(res.data));
+          const u = res.data;
+          u.role = normalizeRole(u.role);
+          setUser(u);
+          localStorage.setItem('user', JSON.stringify(u));
         })
         .catch(() => {
           localStorage.removeItem('token');
@@ -53,6 +67,7 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     const res = await api.post('/auth/login', { email, password });
     const { token, user: userData } = res.data;
+    userData.role = normalizeRole(userData.role);
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);

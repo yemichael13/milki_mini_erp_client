@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { normalizeRole } from '../contexts/AuthContext';
 import api from '../lib/api';
 
 const Users = () => {
@@ -9,7 +10,7 @@ const Users = () => {
     email: '',
     password: '',
     full_name: '',
-    role: 'sales_officer',
+    role: 'sales',
   });
 
   useEffect(() => {
@@ -32,7 +33,7 @@ const Users = () => {
     try {
       await api.post('/users', formData);
       setShowModal(false);
-      setFormData({ email: '', password: '', full_name: '', role: 'sales_officer' });
+      setFormData({ email: '', password: '', full_name: '', role: 'sales' });
       fetchUsers();
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to create user');
@@ -63,7 +64,7 @@ const Users = () => {
                   <div>
                     <p className="text-sm font-medium text-indigo-600">{user.full_name}</p>
                     <p className="text-sm text-gray-500">{user.email}</p>
-                    <p className="text-sm text-gray-500">Role: {user.role}</p>
+                    <p className="text-sm text-gray-500">Role: {normalizeRole(user.role)}</p>
                   </div>
                   <span
                     className={`px-2 py-1 text-xs rounded ${
@@ -122,12 +123,12 @@ const Users = () => {
                   onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
                 >
-                  <option value="sales_officer">Sales Officer</option>
-                  <option value="procurement_officer">Procurement Officer</option>
-                  <option value="production_officer">Production Officer</option>
+                  <option value="sales">Sales Officer</option>
+                  <option value="procurement">Procurement Officer</option>
+                  <option value="production">Production Officer</option>
                   <option value="accountant">Accountant</option>
                   <option value="general_manager">General Manager</option>
-                  <option value="admin">Admin</option>
+                  <option value="system_admin">System Admin</option>
                 </select>
               </div>
               <div className="flex justify-end space-x-2">

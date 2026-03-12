@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth, normalizeRole } from '../contexts/AuthContext';
 
 const Layout = ({ children }) => {
   const { user, logout } = useAuth();
@@ -12,7 +12,8 @@ const Layout = ({ children }) => {
 
   const canAccess = (roles) => {
     if (!user) return false;
-    return roles.includes(user.role);
+    const role = normalizeRole(user.role);
+    return roles.includes(role) || roles.includes(user.role);
   };
 
   return (
@@ -32,7 +33,7 @@ const Layout = ({ children }) => {
                   Dashboard
                 </Link>
                 {/* Customers shown to sales, accountant, general manager */}
-                {canAccess(['sales_officer', 'accountant', 'general_manager']) && (
+                {canAccess(['sales', 'accountant', 'general_manager']) && (
                   <Link
                     to="/customers"
                     className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
@@ -40,8 +41,8 @@ const Layout = ({ children }) => {
                     Customers
                   </Link>
                 )}
-                {/* Suppliers shown to procurement officer and general manager */}
-                {canAccess(['procurement_officer', 'general_manager']) && (
+                {/* Suppliers shown to procurement, accountant, general manager */}
+                {canAccess(['procurement', 'general_manager', 'accountant']) && (
                   <Link
                     to="/suppliers"
                     className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
@@ -49,44 +50,17 @@ const Layout = ({ children }) => {
                     Suppliers
                   </Link>
                 )}
-                {/* Sales workflow link */}
-                {canAccess(['sales_officer', 'accountant', 'general_manager']) && (
+                {/* Transactions - all department officers, accountant, general manager */}
+                {canAccess(['sales', 'procurement', 'production', 'accountant', 'general_manager']) && (
                   <Link
-                    to="/sales"
+                    to="/transactions"
                     className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
                   >
-                    Sales
-                  </Link>
-                )}
-                {/* Production workflow link */}
-                {canAccess(['production_officer', 'accountant', 'general_manager']) && (
-                  <Link
-                    to="/production"
-                    className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                  >
-                    Production
-                  </Link>
-                )}
-                {/* Procurement workflow link */}
-                {canAccess(['procurement_officer', 'accountant', 'general_manager']) && (
-                  <Link
-                    to="/procurement"
-                    className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                  >
-                    Procurement
-                  </Link>
-                )}
-                {/* Payments only for sales or procurement officers */}
-                {canAccess(['sales_officer', 'procurement_officer']) && (
-                  <Link
-                    to="/payments"
-                    className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                  >
-                    Payments
+                    Transactions
                   </Link>
                 )}
                 {/* Reports only for general manager */}
-                {canAccess(['general_manager']) && (
+                {canAccess(['general_manager', 'accountant']) && (
                   <Link
                     to="/reports"
                     className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
@@ -94,7 +68,7 @@ const Layout = ({ children }) => {
                     Reports
                   </Link>
                 )}
-                {canAccess(['admin']) && (
+                {canAccess(['system_admin']) && (
                   <Link
                     to="/users"
                     className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"

@@ -110,8 +110,8 @@ const Reports = () => {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Approved</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Paid</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Credit Sales</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Paid Sales</th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Balance</th>
                 </tr>
               </thead>
@@ -145,8 +145,8 @@ const Reports = () => {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Supplier</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Credit Purchases</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Payments</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Debt Purchases</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Paid Purchases</th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Balance</th>
                 </tr>
               </thead>

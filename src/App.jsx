@@ -6,7 +6,6 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Customers from './pages/Customers';
 import Transactions from './pages/Transactions';
-import Payments from './pages/Payments';
 import Reports from './pages/Reports';
 import Users from './pages/Users';
 import Suppliers from './pages/Suppliers';
@@ -30,7 +29,7 @@ const AppRoutes = () => {
       <Route
         path="/customers"
         element={
-          <ProtectedRoute allowedRoles={['sales_officer', 'accountant', 'general_manager']}>
+          <ProtectedRoute allowedRoles={['sales','accountant','general_manager']}>
             <Layout>
               <Customers />
             </Layout>
@@ -38,41 +37,11 @@ const AppRoutes = () => {
         }
       />
       <Route
-        path="/sales"
+        path="/transactions"
         element={
-          <ProtectedRoute allowedRoles={['sales_officer', 'accountant', 'general_manager']}>
+          <ProtectedRoute allowedRoles={['sales', 'procurement', 'production', 'accountant', 'general_manager']}>
             <Layout>
-              <Transactions workflow="sales" />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/production"
-        element={
-          <ProtectedRoute allowedRoles={['production_officer', 'accountant', 'general_manager']}>
-            <Layout>
-              <Transactions workflow="production" />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/procurement"
-        element={
-          <ProtectedRoute allowedRoles={['procurement_officer', 'accountant', 'general_manager']}>
-            <Layout>
-              <Transactions workflow="procurement" />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/payments"
-        element={
-          <ProtectedRoute allowedRoles={["sales_officer", "procurement_officer"]}>
-            <Layout>
-              <Payments />
+              <Transactions />
             </Layout>
           </ProtectedRoute>
         }
@@ -80,7 +49,7 @@ const AppRoutes = () => {
       <Route
         path="/reports"
         element={
-          <ProtectedRoute allowedRoles={["general_manager"]}>
+          <ProtectedRoute allowedRoles={["general_manager","accountant"]}>
             <Layout>
               <Reports />
             </Layout>
@@ -90,22 +59,24 @@ const AppRoutes = () => {
       <Route
         path="/users"
         element={
-          <ProtectedRoute allowedRoles={['admin']}>
+          <ProtectedRoute allowedRoles={['system_admin']}>
             <Layout>
               <Users />
             </Layout>
           </ProtectedRoute>
         }
-      />      <Route
+      />
+      <Route
         path="/suppliers"
         element={
-          <ProtectedRoute allowedRoles={["procurement_officer", "general_manager"]}>
+          <ProtectedRoute allowedRoles={["procurement", "general_manager", "accountant"]}>
             <Layout>
               <Suppliers />
             </Layout>
           </ProtectedRoute>
         }
-      />      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      />
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
 };
