@@ -110,12 +110,12 @@ const Dashboard = () => {
             .reduce((sum, tx) => sum + Number(tx.amount), 0);
 
           statsData.totalTransactions = transactionsRes.data.length;
-          statsData.pendingTransactions = transactionsRes.data.filter(tx => tx.status === 'pending').length;
+          statsData.pendingTransactions = transactionsRes.data.filter(tx => tx.status === 'accountant_approved').length;
           statsData.totalCustomerCredit = totalCredit === 0 ? 0 : totalCredit - totalPaidSales;
           statsData.totalSupplierDebt = totalDebt === 0 ? 0 : totalDebt - totalPaidProc;
 
         } else if (role === 'general_manager') {
-          const transactionsRes = await api.get('/transactions');
+          const transactionsRes = await api.get('/transactions', { params: { status: 'all' } });
           const approvedTransactions = transactionsRes.data.filter(tx => tx.status === 'manager_approved');
 
           const totalCredit = approvedTransactions
@@ -132,7 +132,7 @@ const Dashboard = () => {
             .filter(tx => tx.type === 'procurement' && tx.payment_type === 'paid')
             .reduce((sum, tx) => sum + Number(tx.amount), 0);
 
-          statsData.pendingTransactions = transactionsRes.data.filter(tx => tx.status === 'pending').length;
+          statsData.pendingTransactions = transactionsRes.data.filter(tx => tx.status === 'accountant_approved').length;
           statsData.salesTransactions = transactionsRes.data.filter(tx => tx.type === 'sale').length;
           statsData.procurementTransactions = transactionsRes.data.filter(tx => tx.type === 'procurement').length;
           statsData.productionTransactions = transactionsRes.data.filter(tx => tx.type === 'production').length;

@@ -12,7 +12,7 @@ const Transactions = () => {
   const [loading, setLoading] = useState(true);
 
   const [showModal, setShowModal] = useState(false);
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const [receiptFile, setReceiptFile] = useState(null);
 
@@ -34,6 +34,7 @@ const Transactions = () => {
 
   const canCreate = ["sales", "procurement", "production"].includes(role);
   const isManager = role === "general_manager";
+  const isAccountant = role === "accountant";
 
   useEffect(() => {
     fetchTransactions();
@@ -50,7 +51,11 @@ const Transactions = () => {
 
   const fetchTransactions = async () => {
     try {
-      const params = statusFilter ? { status: statusFilter } : {};
+      let status = statusFilter;
+      if (isManager && statusFilter === "pending") {
+        status = "accountant_approved";
+      }
+      const params = status ? { status } : {};
       const res = await api.get("/transactions", { params });
       setTransactions(res.data);
     } catch (err) {
@@ -115,6 +120,10 @@ const Transactions = () => {
     setActionModal({ open: true, txId: id, type: "approve" });
   };
 
+  const openAccountantApprove = (id) => {
+    setActionModal({ open: true, txId: id, type: "accountant-approve" });
+  };
+
   const openReject = (id) => {
     setActionModal({ open: true, txId: id, type: "reject" });
   };
@@ -130,6 +139,8 @@ const Transactions = () => {
     try {
       if (actionModal.type === "approve") {
         await api.post(`/transactions/${actionModal.txId}/approve`);
+      } else if (actionModal.type === "accountant-approve") {
+        await api.post(`/transactions/${actionModal.txId}/accountant-approve`);
       } else {
         await api.post(`/transactions/${actionModal.txId}/reject`, {
           rejection_reason: rejectionReason,
@@ -190,7 +201,7 @@ const Transactions = () => {
         onChange={(e) => setStatusFilter(e.target.value)}
         className="mb-4 border px-3 py-2 rounded"
       >
-        <option value="">All</option>
+        <option value="all">All</option>
         <option value="pending">Pending</option>
         <option value="manager_approved">Approved</option>
         <option value="rejected">Rejected</option>
@@ -246,7 +257,24 @@ const Transactions = () => {
 
               </div>
 
-              {isManager && tx.status === "pending" && (
+              {isAccountant && tx.status === "pending" && (
+                <div className="space-x-2">
+                  <button
+                    onClick={() => openAccountantApprove(tx.id)}
+                    className="bg-blue-600 text-white px-3 py-1 rounded"
+                  >
+                    Accountant Approve
+                  </button>
+                  <button
+                    onClick={() => openReject(tx.id)}
+                    className="bg-red-600 text-white px-3 py-1 rounded"
+                  >
+                    Reject
+                  </button>
+                </div>
+              )}
+
+              {isManager && tx.status === "accountant_approved" && (
                 <div className="space-x-2">
 
                   <button
@@ -359,10 +387,10 @@ const Transactions = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Receipt (JPG/PNG)</label>
+                <label className="block text-sm font-medium text-gray-700">Receipt (JPG/PNG/PDF)</label>
                 <input
                   type="file"
-                  accept=".jpg,.jpeg,.png"
+                  accept=".jpg,.jpeg,.png,.pdf"
                   onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
                   className="mt-1 block w-full text-sm"
                 />
@@ -395,7 +423,11 @@ const Transactions = () => {
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
           <div className="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
             <h3 className="text-lg font-bold mb-4">
-              {actionModal.type === "approve" ? "Approve Transaction" : "Reject Transaction"}
+              {actionModal.type === "approve"
+                ? "Approve Transaction"
+                : actionModal.type === "accountant-approve"
+                ? "Accountant Approve"
+                : "Reject Transaction"}
             </h3>
             <form onSubmit={handleActionSubmit} className="space-y-4">
               {actionModal.type === "reject" && (
@@ -420,7 +452,11 @@ const Transactions = () => {
                 <button
                   type="submit"
                   className={`px-4 py-2 text-white rounded-md ${
-                    actionModal.type === "approve" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"
+                    actionModal.type === "approve"
+                      ? "bg-green-600 hover:bg-green-700"
+                      : actionModal.type === "accountant-approve"
+                      ? "bg-blue-600 hover:bg-blue-700"
+                      : "bg-red-600 hover:bg-red-700"
                   }`}
                 >
                   Confirm
