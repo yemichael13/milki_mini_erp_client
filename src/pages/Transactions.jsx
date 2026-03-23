@@ -15,8 +15,8 @@ const Transactions = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
-  const [receiptFile, setReceiptFile] = useState(null);
-  const [paymentReceipt, setPaymentReceipt] = useState(null);
+  const [receiptFiles, setReceiptFiles] = useState([]);
+  const [paymentReceipts, setPaymentReceipts] = useState([]);
 
   const [formData, setFormData] = useState({
     customer_id: "",
@@ -93,8 +93,8 @@ const Transactions = () => {
       data.append("amount", formData.amount);
       data.append("description", formData.description);
       data.append("payment_type", formData.payment_type);
-      if (receiptFile) {
-        data.append("receipt", receiptFile);
+      if (receiptFiles.length) {
+        receiptFiles.forEach((file) => data.append("receipt", file));
       }
 
       if (role === "sales") {
@@ -117,7 +117,7 @@ const Transactions = () => {
         payment_type: "paid",
       });
 
-      setReceiptFile(null);
+      setReceiptFiles([]);
 
       fetchTransactions();
     } catch (err) {
@@ -134,8 +134,8 @@ const Transactions = () => {
       if (paymentForm.description) {
         data.append("description", paymentForm.description);
       }
-      if (paymentReceipt) {
-        data.append("receipt", paymentReceipt);
+      if (paymentReceipts.length) {
+        paymentReceipts.forEach((file) => data.append("receipt", file));
       }
       if (paymentForm.target === "customer") {
         data.append("customer_id", paymentForm.customer_id);
@@ -153,7 +153,7 @@ const Transactions = () => {
         amount: "",
         description: "",
       });
-      setPaymentReceipt(null);
+      setPaymentReceipts([]);
       fetchTransactions();
     } catch (err) {
       alert(err.response?.data?.message || "Failed to record payment");
@@ -198,8 +198,7 @@ const Transactions = () => {
     }
   };
 
-  const getReceiptUrl = (tx) => {
-    const receipt = tx?.receipt_path || tx?.receipt_image || tx?.receipt_url;
+  const toReceiptUrl = (receipt) => {
     if (!receipt) return null;
     if (receipt.startsWith("http://") || receipt.startsWith("https://")) return receipt;
 
@@ -214,6 +213,30 @@ const Transactions = () => {
 
     if (normalized.startsWith("/")) return `${base}${normalized}`;
     return `${base}/uploads/${normalized}`;
+  };
+
+  const getReceiptUrls = (tx) => {
+    const receipt = tx?.receipt_path || tx?.receipt_image || tx?.receipt_url;
+    if (!receipt) return [];
+    if (Array.isArray(receipt)) {
+      return receipt.map(toReceiptUrl).filter(Boolean);
+    }
+    if (typeof receipt === "string") {
+      const trimmed = receipt.trim();
+      if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (Array.isArray(parsed)) {
+            return parsed.map(toReceiptUrl).filter(Boolean);
+          }
+        } catch {
+          // fall through
+        }
+      }
+      const singleUrl = toReceiptUrl(trimmed);
+      return singleUrl ? [singleUrl] : [];
+    }
+    return [];
   };
 
   if (loading) {
@@ -295,15 +318,20 @@ const Transactions = () => {
                 )}
 
                 <p className="text-sm text-gray-500">
-                  Receipt: {getReceiptUrl(tx) ? (
-                    <a
-                      href={getReceiptUrl(tx)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-indigo-600 hover:text-indigo-800"
-                    >
-                      View
-                    </a>
+                  Receipt: {getReceiptUrls(tx).length ? (
+                    <span className="space-x-2">
+                      {getReceiptUrls(tx).map((url, idx) => (
+                        <a
+                          key={url}
+                          href={url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-indigo-600 hover:text-indigo-800"
+                        >
+                          View {idx + 1}
+                        </a>
+                      ))}
+                    </span>
                   ) : (
                     "None"
                   )}
@@ -445,7 +473,8 @@ const Transactions = () => {
                 <input
                   type="file"
                   accept=".jpg,.jpeg,.png,.pdf"
-                  onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
+                  multiple
+                  onChange={(e) => setReceiptFiles(Array.from(e.target.files || []))}
                   className="mt-1 block w-full text-sm"
                 />
               </div>
@@ -455,7 +484,7 @@ const Transactions = () => {
                   type="button"
                   onClick={() => {
                     setShowModal(false);
-                    setReceiptFile(null);
+                    setReceiptFiles([]);
                   }}
                   className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-100 cursor-pointer"
                 >
@@ -569,7 +598,8 @@ const Transactions = () => {
                 <input
                   type="file"
                   accept=".jpg,.jpeg,.png,.pdf"
-                  onChange={(e) => setPaymentReceipt(e.target.files?.[0] || null)}
+                  multiple
+                  onChange={(e) => setPaymentReceipts(Array.from(e.target.files || []))}
                   className="mt-1 block w-full text-sm"
                 />
               </div>
@@ -579,7 +609,7 @@ const Transactions = () => {
                   type="button"
                   onClick={() => {
                     setShowPaymentModal(false);
-                    setPaymentReceipt(null);
+                    setPaymentReceipts([]);
                   }}
                   className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-100 cursor-pointer"
                 >
