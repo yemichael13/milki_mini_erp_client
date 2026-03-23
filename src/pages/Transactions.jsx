@@ -13,8 +13,10 @@ const Transactions = () => {
 
   const [showModal, setShowModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   const [receiptFile, setReceiptFile] = useState(null);
+  const [paymentReceipt, setPaymentReceipt] = useState(null);
 
   const [formData, setFormData] = useState({
     customer_id: "",
@@ -22,6 +24,13 @@ const Transactions = () => {
     amount: "",
     description: "",
     payment_type: "paid",
+  });
+  const [paymentForm, setPaymentForm] = useState({
+    target: "customer",
+    customer_id: "",
+    supplier_id: "",
+    amount: "",
+    description: "",
   });
 
   const [actionModal, setActionModal] = useState({
@@ -39,8 +48,8 @@ const Transactions = () => {
   useEffect(() => {
     fetchTransactions();
 
-    if (role === "sales") fetchCustomers();
-    if (role === "procurement") fetchSuppliers();
+    if (role === "sales" || role === "general_manager") fetchCustomers();
+    if (role === "procurement" || role === "general_manager") fetchSuppliers();
   }, [statusFilter, role]);
 
   useEffect(() => {
@@ -116,6 +125,41 @@ const Transactions = () => {
     }
   };
 
+  const handlePaymentSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      const data = new FormData();
+      data.append("amount", paymentForm.amount);
+      if (paymentForm.description) {
+        data.append("description", paymentForm.description);
+      }
+      if (paymentReceipt) {
+        data.append("receipt", paymentReceipt);
+      }
+      if (paymentForm.target === "customer") {
+        data.append("customer_id", paymentForm.customer_id);
+      } else {
+        data.append("supplier_id", paymentForm.supplier_id);
+      }
+
+      await api.post("/transactions/record-payment", data);
+
+      setShowPaymentModal(false);
+      setPaymentForm({
+        target: "customer",
+        customer_id: "",
+        supplier_id: "",
+        amount: "",
+        description: "",
+      });
+      setPaymentReceipt(null);
+      fetchTransactions();
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to record payment");
+    }
+  };
+
   const openApprove = (id) => {
     setActionModal({ open: true, txId: id, type: "approve" });
   };
@@ -184,14 +228,24 @@ const Transactions = () => {
       <div className="flex justify-between mb-6 p-4">
         <h1 className="md:text-3xl text-xl font-bold">Transactions</h1>
 
-        {canCreate && (
-          <button
-            onClick={() => setShowModal(true)}
-            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm font-medium cursor-pointer md:text-xl"
-          >
-            New Transaction
-          </button>
-        )}
+        <div className="space-x-2">
+          {canCreate && (
+            <button
+              onClick={() => setShowModal(true)}
+              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm font-medium cursor-pointer md:text-xl"
+            >
+              New Transaction
+            </button>
+          )}
+          {isManager && (
+            <button
+              onClick={() => setShowPaymentModal(true)}
+              className="bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700 text-sm font-medium cursor-pointer md:text-xl"
+            >
+              Record Payment
+            </button>
+          )}
+        </div>
       </div>
 
       {/* FILTER */}
@@ -412,6 +466,130 @@ const Transactions = () => {
                   className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 cursor-pointer"
                 >
                   Create
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showPaymentModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 p-2">
+          <div className="relative top-20 mx-auto p-5 border w-full max-w-lg w-full max-w-md sm:max-w-lg md:max-w-xl shadow-lg rounded-md bg-white">
+            <h3 className="text-lg font-bold mb-4">Record Payment</h3>
+            <form onSubmit={handlePaymentSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Payment For *</label>
+                <select
+                  value={paymentForm.target}
+                  onChange={(e) =>
+                    setPaymentForm({
+                      ...paymentForm,
+                      target: e.target.value,
+                      customer_id: "",
+                      supplier_id: "",
+                    })
+                  }
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                >
+                  <option value="customer">Customer Credit</option>
+                  <option value="supplier">Supplier Debt</option>
+                </select>
+              </div>
+
+              {paymentForm.target === "customer" ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Customer *</label>
+                  <select
+                    required
+                    value={paymentForm.customer_id}
+                    onChange={(e) =>
+                      setPaymentForm({ ...paymentForm, customer_id: e.target.value })
+                    }
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                  >
+                    <option value="">Select customer</option>
+                    {customers.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Supplier *</label>
+                  <select
+                    required
+                    value={paymentForm.supplier_id}
+                    onChange={(e) =>
+                      setPaymentForm({ ...paymentForm, supplier_id: e.target.value })
+                    }
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                  >
+                    <option value="">Select supplier</option>
+                    {suppliers.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Amount *</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  required
+                  value={paymentForm.amount}
+                  onChange={(e) =>
+                    setPaymentForm({ ...paymentForm, amount: e.target.value })
+                  }
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Description</label>
+                <textarea
+                  value={paymentForm.description}
+                  onChange={(e) =>
+                    setPaymentForm({ ...paymentForm, description: e.target.value })
+                  }
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Receipt (JPG/PNG/PDF)</label>
+                <input
+                  type="file"
+                  accept=".jpg,.jpeg,.png,.pdf"
+                  onChange={(e) => setPaymentReceipt(e.target.files?.[0] || null)}
+                  className="mt-1 block w-full text-sm"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPaymentModal(false);
+                    setPaymentReceipt(null);
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-100 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 cursor-pointer"
+                >
+                  Record
                 </button>
               </div>
             </form>
