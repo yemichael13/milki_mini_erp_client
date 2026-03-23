@@ -56,7 +56,7 @@ const Reports = () => {
   }
 
   return (
-    <div>
+    <div className='p-2'>
       <h1 className="text-3xl font-bold text-gray-900 mb-6">Reports</h1>
       {summary && (
         <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">

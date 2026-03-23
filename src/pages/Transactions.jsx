@@ -177,17 +177,17 @@ const Transactions = () => {
   }
 
   return (
-    <div>
+    <div className="p-2">
 
       {/* HEADER */}
 
-      <div className="flex justify-between mb-6">
-        <h1 className="text-3xl font-bold">Transactions</h1>
+      <div className="flex justify-between mb-6 p-4">
+        <h1 className="md:text-3xl text-xl font-bold">Transactions</h1>
 
         {canCreate && (
           <button
             onClick={() => setShowModal(true)}
-            className="bg-indigo-600 text-white px-4 py-2 rounded"
+            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm font-medium cursor-pointer md:text-xl"
           >
             New Transaction
           </button>
@@ -302,8 +302,8 @@ const Transactions = () => {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 p-2">
+          <div className="relative top-20 mx-auto p-5 border w-full max-w-lg w-full max-w-md sm:max-w-lg md:max-w-xl shadow-lg rounded-md bg-white">
             <h3 className="text-lg font-bold mb-4">New Transaction</h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               {role === "sales" && (
@@ -403,13 +403,13 @@ const Transactions = () => {
                     setShowModal(false);
                     setReceiptFile(null);
                   }}
-                  className="px-4 py-2 border border-gray-300 rounded-md"
+                  className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-100 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 cursor-pointer"
                 >
                   Create
                 </button>

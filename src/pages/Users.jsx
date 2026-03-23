@@ -46,16 +46,16 @@ const Users = () => {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-6 p-4">
         <h1 className="text-3xl font-bold text-gray-900">Users</h1>
         <button
           onClick={() => setShowModal(true)}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
+          className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 cursor-pointer"
         >
           Add User
         </button>
       </div>
-      <div className="bg-white shadow overflow-hidden sm:rounded-md">
+      <div className="bg-white shadow overflow-hidden sm:rounded-md m-2">
         <ul className="divide-y divide-gray-200">
           {users.map((user) => (
             <li key={user.id}>
@@ -80,8 +80,8 @@ const Users = () => {
         </ul>
       </div>
       {showModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="mx-4 p-5 border w-full max-w-md sm:max-w-lg md:max-w-xl shadow-lg rounded-md bg-white">
             <h3 className="text-lg font-bold mb-4">Add User</h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -135,13 +135,13 @@ const Users = () => {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-md"
+                  className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-100 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 cursor-pointer "
                 >
                   Create
                 </button>

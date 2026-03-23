@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useAuth, normalizeRole } from '../contexts/AuthContext';
 import api from '../lib/api';
+import Logo from '../assets/logo.png';
+
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -321,15 +323,24 @@ const Dashboard = () => {
   };
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">{dashboardContent.title}</h1>
+  <div className="relative min-h-screen">
+
+    <div
+      className="absolute inset-0 bg-cover bg-center"
+      style={{ backgroundImage: `url(${Logo})`, opacity: 0.2 }}
+    ></div>
+
+    <div className="relative p-6">
+      <h1 className="text-3xl font-bold text-gray-900 mb-6">
+        {dashboardContent.title}
+      </h1>
 
       {dashboardContent.links.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {dashboardContent.links.map((link) => (
             <button
               key={link.label}
-              onClick={() => window.location.href = link.to}
+              onClick={() => (window.location.href = link.to)}
               className="bg-white p-4 rounded-lg shadow hover:bg-gray-50 text-left"
             >
               {link.label}
@@ -341,16 +352,27 @@ const Dashboard = () => {
       {dashboardContent.stats.length > 0 && (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
           {dashboardContent.stats.map((stat, index) => (
-            <div key={index} className="bg-white overflow-hidden shadow rounded-lg">
+            <div
+              key={index}
+              className="bg-white overflow-hidden shadow rounded-lg"
+            >
               <div className="p-5">
                 <div className="flex items-center">
-                  <div className={`flex-shrink-0 rounded-md p-3 ${getIconColor(stat.icon)}`}>
+                  <div
+                    className={`shrink-0 rounded-md p-3 ${getIconColor(
+                      stat.icon
+                    )}`}
+                  >
                     {getIcon(stat.icon)}
                   </div>
                   <div className="ml-5 w-0 flex-1">
                     <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">{stat.label}</dt>
-                      <dd className="text-lg font-medium text-gray-900">{stat.value}</dd>
+                      <dt className="text-sm font-medium text-gray-500 truncate">
+                        {stat.label}
+                      </dt>
+                      <dd className="text-lg font-medium text-gray-900">
+                        {stat.value}
+                      </dd>
                     </dl>
                   </div>
                 </div>
@@ -361,13 +383,20 @@ const Dashboard = () => {
       )}
 
       <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Welcome, {user?.full_name}!</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">
+          Welcome, {user?.full_name}!
+        </h2>
         <p className="text-gray-600">
-          You are logged in as <span className="font-medium capitalize">{user?.role.replace('_', ' ')}</span>.
+          You are logged in as{" "}
+          <span className="font-medium capitalize">
+            {user?.role.replace("_", " ")}
+          </span>
+          .
         </p>
       </div>
     </div>
-  );
+  </div>
+);
 };
 
 export default Dashboard;

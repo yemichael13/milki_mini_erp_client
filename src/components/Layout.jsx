@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth, normalizeRole } from '../contexts/AuthContext';
+import Logo from '../assets/logo.png';
 
 const Layout = ({ children }) => {
   const { user, logout } = useAuth();
@@ -22,8 +23,10 @@ const Layout = ({ children }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex">
-              <div className="flex-shrink-0 flex items-center">
-                <h1 className="text-xl font-bold text-gray-900">Mini ERP</h1>
+              <div className="shrink-0 flex items-center">
+               
+                <h1 className="text-xl font-bold text-gray-900 md:block hidden">Milki Financial System</h1>
+                <h1 className='text-sm font-semibold text-gray-900 md:hidden mr-4'>Milki<br />Financial<br />System</h1>
               </div>
               <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
                 <Link
@@ -84,7 +87,7 @@ const Layout = ({ children }) => {
               </span>
               <button
                 onClick={handleLogout}
-                className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-md text-sm font-medium"
+                className="bg-red-500 hover:bg-red-800 text-white px-4 py-2 rounded-md text-sm font-medium cursor-pointer"
               >
                 Logout
               </button>
