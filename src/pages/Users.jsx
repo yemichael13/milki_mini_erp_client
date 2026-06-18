@@ -126,8 +126,11 @@ const Users = () => {
                   <option value="sales">Sales Officer</option>
                   <option value="procurement">Procurement Officer</option>
                   <option value="production">Production Officer</option>
+                  <option value="production_recorder">Production Recorder</option>
+                  <option value="production_approver">Production Approver</option>
                   <option value="accountant">Accountant</option>
                   <option value="general_manager">General Manager</option>
+                  <option value="manager">Manager</option>
                   <option value="system_admin">System Admin</option>
                 </select>
               </div>

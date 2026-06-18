@@ -19,6 +19,18 @@ const Dashboard = () => {
     totalSalesRevenue: 0,
     totalProductionExpenses: 0,
   });
+  const [inventoryStats, setInventoryStats] = useState({
+    total_produced_pieces: 0,
+    total_produced_quintals: 0,
+    total_released_pieces: 0,
+    total_released_quintals: 0,
+    total_returned_pieces: 0,
+    total_returned_quintals: 0,
+    current_inventory_pieces: 0,
+    current_inventory_quintals: 0,
+    pending_approvals: 0,
+    pending_manager_reviews: 0,
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -40,6 +52,13 @@ const Dashboard = () => {
           totalSalesRevenue: 0,
           totalProductionExpenses: 0,
         };
+
+        const needsInventory = ['production_recorder', 'production_approver', 'general_manager', 'accountant'];
+        const inventoryRes = needsInventory.includes(role) ? await api.get('/inventory') : null;
+        const inventoryData = inventoryRes?.data || inventoryStats;
+        if (inventoryRes) {
+          setInventoryStats(inventoryRes.data);
+        }
 
         if (role === 'sales') {
           const [customersRes, transactionsRes] = await Promise.all([
@@ -93,6 +112,11 @@ const Dashboard = () => {
           statsData.pendingTransactions = productionTransactions.filter(tx => tx.status === 'pending').length;
           statsData.totalProductionExpenses = approvedProduction.reduce((sum, tx) => sum + Number(tx.amount), 0);
 
+        } else if (role === 'production_recorder' || role === 'production_approver') {
+          statsData.productionTransactions = Number(inventoryData.total_produced_pieces || 0);
+          statsData.pendingTransactions = Number(inventoryData.pending_approvals || 0);
+          statsData.totalProductionExpenses = Number(inventoryData.current_inventory_pieces || 0);
+
         } else if (role === 'accountant') {
           const transactionsRes = await api.get('/transactions');
           const approvedTransactions = transactionsRes.data.filter(tx => tx.status === 'manager_approved');
@@ -140,6 +164,7 @@ const Dashboard = () => {
           statsData.productionTransactions = transactionsRes.data.filter(tx => tx.type === 'production').length;
           statsData.totalCustomerCredit = totalCredit === 0 ? 0 : totalCredit - totalPaidSales;
           statsData.totalSupplierDebt = totalDebt === 0 ? 0 : totalDebt - totalPaidProc;
+          statsData.totalProductionExpenses = Number(inventoryData.current_inventory_pieces || 0);
         }
 
         setStats(statsData);
@@ -207,18 +232,50 @@ const Dashboard = () => {
           ],
         };
 
+      case 'production_recorder':
+        return {
+          title: 'Production Inventory Recorder',
+          links: [
+            { label: 'Open Inventory Module', to: '/production-inventory' },
+            { label: 'Production Records', to: '/production-inventory' },
+          ],
+          stats: [
+            { label: 'Current Inventory', value: `${inventoryStats.current_inventory_pieces.toLocaleString()} pcs`, icon: 'package' },
+            { label: 'Pending Approvals', value: inventoryStats.pending_approvals, icon: 'clock' },
+            { label: 'Pending Manager Reviews', value: inventoryStats.pending_manager_reviews, icon: 'cog' },
+            { label: 'Produced Pieces', value: inventoryStats.total_produced_pieces.toLocaleString(), icon: 'shopping-cart' },
+          ],
+        };
+
+      case 'production_approver':
+        return {
+          title: 'Production Approval Desk',
+          links: [
+            { label: 'Review Inventory', to: '/production-inventory' },
+            { label: 'Approve Production', to: '/production-inventory' },
+          ],
+          stats: [
+            { label: 'Pending Approvals', value: inventoryStats.pending_approvals, icon: 'clock' },
+            { label: 'Pending Manager Reviews', value: inventoryStats.pending_manager_reviews, icon: 'cog' },
+            { label: 'Current Inventory', value: `${inventoryStats.current_inventory_pieces.toLocaleString()} pcs`, icon: 'package' },
+            { label: 'Produced Quintals', value: `${inventoryStats.total_produced_quintals.toLocaleString()}`, icon: 'dollar-sign' },
+          ],
+        };
+
       case 'accountant':
         return {
           title: 'Accounting Dashboard',
           links: [
             { label: 'View All Transactions', to: '/transactions' },
             { label: 'Financial Reports', to: '/reports' },
+            { label: 'Inventory Module', to: '/production-inventory' },
           ],
           stats: [
             { label: 'Total Transactions', value: stats.totalTransactions, icon: 'package' },
             { label: 'Pending Transactions', value: stats.pendingTransactions, icon: 'clock' },
             { label: 'Customer Credit', value: `$${stats.totalCustomerCredit.toLocaleString()}`, icon: 'credit-card' },
             { label: 'Supplier Debt', value: `$${stats.totalSupplierDebt.toLocaleString()}`, icon: 'dollar-sign' },
+            { label: 'Inventory Balance', value: `${inventoryStats.current_inventory_pieces.toLocaleString()} pcs`, icon: 'cog' },
           ],
         };
 
@@ -230,6 +287,7 @@ const Dashboard = () => {
             { label: 'View Reports', to: '/reports' },
             { label: 'Manage Customers', to: '/customers' },
             { label: 'Manage Suppliers', to: '/suppliers' },
+            { label: 'Production Inventory', to: '/production-inventory' },
           ],
           stats: [
             { label: 'Pending Approvals', value: stats.pendingTransactions, icon: 'clock' },
@@ -238,6 +296,8 @@ const Dashboard = () => {
             { label: 'Production Transactions', value: stats.productionTransactions, icon: 'cog' },
             { label: 'Customer Credit', value: `$${stats.totalCustomerCredit.toLocaleString()}`, icon: 'credit-card' },
             { label: 'Supplier Debt', value: `$${stats.totalSupplierDebt.toLocaleString()}`, icon: 'dollar-sign' },
+            { label: 'Inventory Balance', value: `${inventoryStats.current_inventory_pieces.toLocaleString()} pcs`, icon: 'package' },
+            { label: 'Manager Reviews', value: inventoryStats.pending_manager_reviews, icon: 'clock' },
           ],
         };
 

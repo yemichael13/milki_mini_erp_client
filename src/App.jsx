@@ -9,6 +9,7 @@ import Transactions from './pages/Transactions';
 import Reports from './pages/Reports';
 import Users from './pages/Users';
 import Suppliers from './pages/Suppliers';
+import ProductionInventory from './pages/ProductionInventory';
 
 const AppRoutes = () => {
   const { user } = useAuth();
@@ -52,6 +53,16 @@ const AppRoutes = () => {
           <ProtectedRoute allowedRoles={["general_manager","accountant"]}>
             <Layout>
               <Reports />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/production-inventory"
+        element={
+          <ProtectedRoute allowedRoles={["production_recorder", "production_approver", "general_manager", "accountant", "system_admin"]}>
+            <Layout>
+              <ProductionInventory />
             </Layout>
           </ProtectedRoute>
         }
