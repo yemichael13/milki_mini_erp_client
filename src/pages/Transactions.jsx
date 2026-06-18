@@ -1,6 +1,26 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../lib/api";
+import {
+  formatDateTime,
+  formatDepartment,
+  formatDisplayEmail,
+  formatDisplayName,
+  formatMoney,
+  getReceiptUrls,
+  getTransactionLabel,
+} from "../lib/transactionUtils";
+
+const statusStyles = {
+  pending: "bg-amber-50 text-amber-700 ring-1 ring-amber-200",
+  accountant_approved: "bg-blue-50 text-blue-700 ring-1 ring-blue-200",
+  manager_approved: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200",
+  rejected: "bg-rose-50 text-rose-700 ring-1 ring-rose-200",
+};
+
+const actionButtonBase =
+  "inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium transition-colors";
 
 const Transactions = () => {
   const { user } = useAuth();
@@ -10,6 +30,7 @@ const Transactions = () => {
   const [customers, setCustomers] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const [showModal, setShowModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -45,20 +66,10 @@ const Transactions = () => {
   const isManager = role === "general_manager";
   const isAccountant = role === "accountant";
 
-  useEffect(() => {
-    fetchTransactions();
+  const fetchTransactions = useCallback(async () => {
+    setLoading(true);
+    setError("");
 
-    if (role === "sales" || role === "general_manager") fetchCustomers();
-    if (role === "procurement" || role === "general_manager") fetchSuppliers();
-  }, [statusFilter, role]);
-
-  useEffect(() => {
-    if (role === "production") {
-      setFormData((prev) => ({ ...prev, payment_type: "paid" }));
-    }
-  }, [role]);
-
-  const fetchTransactions = async () => {
     try {
       let status = statusFilter;
       if (isManager && statusFilter === "pending") {
@@ -69,20 +80,34 @@ const Transactions = () => {
       setTransactions(res.data);
     } catch (err) {
       console.error(err);
+      setError(err.response?.data?.message || "Failed to load transactions");
     } finally {
       setLoading(false);
     }
-  };
+  }, [isManager, statusFilter]);
 
-  const fetchCustomers = async () => {
+  const fetchCustomers = useCallback(async () => {
     const res = await api.get("/customers");
     setCustomers(res.data);
-  };
+  }, []);
 
-  const fetchSuppliers = async () => {
+  const fetchSuppliers = useCallback(async () => {
     const res = await api.get("/suppliers");
     setSuppliers(res.data);
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchTransactions();
+
+    if (role === "sales" || role === "general_manager") fetchCustomers();
+    if (role === "procurement" || role === "general_manager") fetchSuppliers();
+  }, [fetchTransactions, fetchCustomers, fetchSuppliers, role]);
+
+  useEffect(() => {
+    if (role === "production") {
+      setFormData((prev) => ({ ...prev, payment_type: "paid" }));
+    }
+  }, [role]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -108,7 +133,6 @@ const Transactions = () => {
       await api.post("/transactions", data);
 
       setShowModal(false);
-
       setFormData({
         customer_id: "",
         supplier_id: "",
@@ -116,9 +140,7 @@ const Transactions = () => {
         description: "",
         payment_type: "paid",
       });
-
       setReceiptFiles([]);
-
       fetchTransactions();
     } catch (err) {
       alert(err.response?.data?.message || "Failed to create transaction");
@@ -198,344 +220,252 @@ const Transactions = () => {
     }
   };
 
-  const toReceiptUrl = (receipt) => {
-    if (!receipt) return null;
-    if (receipt.startsWith("http://") || receipt.startsWith("https://")) return receipt;
-
-    const base = (api.defaults.baseURL || "").replace(/\/api\/?$/, "");
-    const normalized = receipt.replace(/\\/g, "/");
-
-    const idx = normalized.indexOf("/uploads/");
-    if (idx >= 0) return `${base}${normalized.slice(idx)}`;
-
-    const idx2 = normalized.indexOf("uploads/");
-    if (idx2 >= 0) return `${base}/${normalized.slice(idx2)}`;
-
-    if (normalized.startsWith("/")) return `${base}${normalized}`;
-    return `${base}/uploads/${normalized}`;
-  };
-
-  const getReceiptUrls = (tx) => {
-    const receipt = tx?.receipt_path || tx?.receipt_image || tx?.receipt_url;
-    if (!receipt) return [];
-    if (Array.isArray(receipt)) {
-      return receipt.map(toReceiptUrl).filter(Boolean);
-    }
-    if (typeof receipt === "string") {
-      const trimmed = receipt.trim();
-      if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
-        try {
-          const parsed = JSON.parse(trimmed);
-          if (Array.isArray(parsed)) {
-            return parsed.map(toReceiptUrl).filter(Boolean);
-          }
-        } catch {
-          // fall through
-        }
-      }
-      const singleUrl = toReceiptUrl(trimmed);
-      return singleUrl ? [singleUrl] : [];
-    }
-    return [];
-  };
-
   if (loading) {
     return <div className="text-center py-10">Loading...</div>;
   }
 
   return (
     <div className="p-2">
+      <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-white to-slate-50 p-4 shadow-sm sm:p-6">
+        <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
+              Finance workflow
+            </p>
+            <h1 className="mt-2 text-2xl font-bold text-slate-900 sm:text-3xl">Transactions</h1>
+            <p className="mt-2 max-w-2xl text-sm text-slate-600">
+              Review, filter, and inspect transaction activity with creator details, created
+              timestamps, and a dedicated detail view.
+            </p>
+          </div>
 
-      {/* HEADER */}
+          <div className="flex flex-wrap gap-2">
+            {canCreate && (
+              <button
+                onClick={() => setShowModal(true)}
+                className="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700"
+              >
+                New Transaction
+              </button>
+            )}
+            {isManager && (
+              <button
+                onClick={() => setShowPaymentModal(true)}
+                className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-800"
+              >
+                Record Payment
+              </button>
+            )}
+          </div>
+        </div>
 
-      <div className="flex justify-between mb-6 p-4">
-        <h1 className="md:text-3xl text-xl font-bold">Transactions</h1>
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="text-sm font-medium text-slate-600" htmlFor="status-filter">
+            Status
+          </label>
+          <select
+            id="status-filter"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus:border-slate-400"
+          >
+            <option value="all">All</option>
+            <option value="pending">Pending</option>
+            <option value="accountant_approved">Accountant Approved</option>
+            <option value="manager_approved">Manager Approved</option>
+            <option value="rejected">Rejected</option>
+          </select>
+          <button
+            type="button"
+            onClick={fetchTransactions}
+            className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100"
+          >
+            Refresh
+          </button>
+        </div>
 
-        <div className="space-x-2">
-          {canCreate && (
-            <button
-              onClick={() => setShowModal(true)}
-              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm font-medium cursor-pointer md:text-xl"
-            >
-              New Transaction
-            </button>
-          )}
-          {isManager && (
-            <button
-              onClick={() => setShowPaymentModal(true)}
-              className="bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700 text-sm font-medium cursor-pointer md:text-xl"
-            >
-              Record Payment
-            </button>
-          )}
+        {error && (
+          <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            {error}
+          </div>
+        )}
+
+        <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <table className="min-w-[1220px] divide-y divide-slate-200">
+            <thead className="bg-slate-50">
+              <tr>
+                <Th>Money Amount</Th>
+                <Th>Department</Th>
+                <Th>Created By</Th>
+                <Th>Payment Type</Th>
+                <Th>Status</Th>
+                <Th>Description</Th>
+                <Th>Receipt</Th>
+                <Th>Transaction Created Date</Th>
+                <Th>Actions</Th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 bg-white">
+              {transactions.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="px-6 py-12 text-center text-sm text-slate-500">
+                    No transactions found.
+                  </td>
+                </tr>
+              ) : (
+                transactions.map((tx) => {
+                  const creatorName = formatDisplayName(tx.created_by_name, tx.created_by_email);
+                  const creatorEmail = formatDisplayEmail(tx.created_by_email);
+                  const receiptUrls = getReceiptUrls(tx, api.defaults.baseURL);
+                  const statusClass =
+                    statusStyles[tx.status] || "bg-slate-100 text-slate-700 ring-1 ring-slate-200";
+
+                  return (
+                    <tr key={tx.id} className="align-top hover:bg-slate-50/70">
+                      <Td>
+                        <div className="font-semibold text-slate-900">{formatMoney(tx.amount)}</div>
+                      </Td>
+
+                      <Td>
+                        <div className="text-sm font-medium text-slate-900">
+                          {formatDepartment(tx.source_department)}
+                        </div>
+                        <div className="mt-1 text-xs text-slate-500">
+                          Created by {creatorName}
+                        </div>
+                      </Td>
+
+                      <Td>
+                        <div className="text-sm font-medium text-slate-900">{creatorName}</div>
+                        <div className="mt-1 text-xs text-slate-500">{creatorEmail}</div>
+                      </Td>
+
+                      <Td>
+                        <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-700">
+                          {getTransactionLabel(tx.payment_type)}
+                        </span>
+                      </Td>
+
+                      <Td>
+                        <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${statusClass}`}>
+                          {tx.status}
+                        </span>
+                      </Td>
+
+                      <Td>
+                        <div className="max-w-[20rem] text-sm text-slate-700">
+                          {tx.description ? (
+                            <span className="block truncate" title={tx.description}>
+                              {tx.description}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">No description</span>
+                          )}
+                        </div>
+                      </Td>
+
+                      <Td>
+                        {receiptUrls.length ? (
+                          <div className="flex flex-col gap-2">
+                            <div className="flex flex-wrap gap-2">
+                              <a
+                                href={receiptUrls[0]}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100"
+                              >
+                                View
+                              </a>
+                              <a
+                                href={receiptUrls[0]}
+                                download
+                                className="inline-flex items-center justify-center rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-slate-800"
+                              >
+                                Download
+                              </a>
+                            </div>
+                            {receiptUrls.length > 1 && (
+                              <span className="text-xs text-slate-500">
+                                +{receiptUrls.length - 1} more file
+                                {receiptUrls.length - 1 > 1 ? "s" : ""}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-sm text-slate-400">None</span>
+                        )}
+                      </Td>
+
+                      <Td>
+                        <div className="text-sm text-slate-700">{formatDateTime(tx.created_at)}</div>
+                      </Td>
+
+                      <Td>
+                        <div className="flex flex-col gap-2">
+                          <Link
+                            to={`/transactions/${tx.id}`}
+                            className={`${actionButtonBase} border border-slate-300 bg-white text-slate-700 hover:bg-slate-100`}
+                          >
+                            View Details
+                          </Link>
+
+                          {isAccountant && tx.status === "pending" && (
+                            <>
+                              <button
+                                onClick={() => openAccountantApprove(tx.id)}
+                                className={`${actionButtonBase} bg-blue-600 text-white hover:bg-blue-700`}
+                              >
+                                Accountant Approve
+                              </button>
+                              <button
+                                onClick={() => openReject(tx.id)}
+                                className={`${actionButtonBase} bg-rose-600 text-white hover:bg-rose-700`}
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
+
+                          {isManager && tx.status === "accountant_approved" && (
+                            <>
+                              <button
+                                onClick={() => openApprove(tx.id)}
+                                className={`${actionButtonBase} bg-emerald-600 text-white hover:bg-emerald-700`}
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => openReject(tx.id)}
+                                className={`${actionButtonBase} bg-rose-600 text-white hover:bg-rose-700`}
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </Td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/* FILTER */}
-
-      <select
-        value={statusFilter}
-        onChange={(e) => setStatusFilter(e.target.value)}
-        className="mb-4 border px-3 py-2 rounded"
-      >
-        <option value="all">All</option>
-        <option value="pending">Pending</option>
-        <option value="manager_approved">Approved</option>
-        <option value="rejected">Rejected</option>
-      </select>
-
-      {/* LIST */}
-
-      <div className="bg-white shadow rounded">
-        <ul className="divide-y">
-
-          {transactions.map((tx) => (
-
-            <li key={tx.id} className="p-4 flex justify-between">
-
-              <div>
-
-                <p className="font-semibold text-indigo-600">
-                  ${Number(tx.amount).toLocaleString()}
-                </p>
-
-                <p className="text-sm text-gray-500">
-                  Department: {tx.source_department}
-                </p>
-
-                <p className="text-sm text-gray-500">
-                  Payment: {tx.payment_type}
-                </p>
-
-                <p className="text-sm text-gray-500">
-                  Status: {tx.status}
-                </p>
-
-                {tx.description && (
-                  <p className="text-sm text-gray-500">
-                    {tx.description}
-                  </p>
-                )}
-
-                <p className="text-sm text-gray-500">
-                  Receipt: {getReceiptUrls(tx).length ? (
-                    <span className="space-x-2">
-                      {getReceiptUrls(tx).map((url, idx) => (
-                        <a
-                          key={url}
-                          href={url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-indigo-600 hover:text-indigo-800"
-                        >
-                          View {idx + 1}
-                        </a>
-                      ))}
-                    </span>
-                  ) : (
-                    "None"
-                  )}
-                </p>
-
-              </div>
-
-              {isAccountant && tx.status === "pending" && (
-                <div className="space-x-2">
-                  <button
-                    onClick={() => openAccountantApprove(tx.id)}
-                    className="bg-blue-600 text-white px-3 py-1 rounded"
-                  >
-                    Accountant Approve
-                  </button>
-                  <button
-                    onClick={() => openReject(tx.id)}
-                    className="bg-red-600 text-white px-3 py-1 rounded"
-                  >
-                    Reject
-                  </button>
-                </div>
-              )}
-
-              {isManager && tx.status === "accountant_approved" && (
-                <div className="space-x-2">
-
-                  <button
-                    onClick={() => openApprove(tx.id)}
-                    className="bg-green-600 text-white px-3 py-1 rounded"
-                  >
-                    Approve
-                  </button>
-
-                  <button
-                    onClick={() => openReject(tx.id)}
-                    className="bg-red-600 text-white px-3 py-1 rounded"
-                  >
-                    Reject
-                  </button>
-
-                </div>
-              )}
-
-            </li>
-
-          ))}
-
-        </ul>
-      </div>
-
       {showModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 p-2">
-          <div className="relative top-20 mx-auto p-5 border w-full max-w-lg w-full max-w-md sm:max-w-lg md:max-w-xl shadow-lg rounded-md bg-white">
-            <h3 className="text-lg font-bold mb-4">New Transaction</h3>
-            <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/50 p-2 backdrop-blur-sm">
+          <div className="relative top-16 mx-auto w-full max-w-xl rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-slate-900">New Transaction</h3>
+            <form onSubmit={handleSubmit} className="mt-4 space-y-4">
               {role === "sales" && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Customer *</label>
+                  <label className="block text-sm font-medium text-slate-700">Customer *</label>
                   <select
                     required
                     value={formData.customer_id}
                     onChange={(e) => setFormData({ ...formData, customer_id: e.target.value })}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                  >
-                    <option value="">Select customer</option>
-                    {customers.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {role === "procurement" && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Supplier *</label>
-                  <select
-                    required
-                    value={formData.supplier_id}
-                    onChange={(e) => setFormData({ ...formData, supplier_id: e.target.value })}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                  >
-                    <option value="">Select supplier</option>
-                    {suppliers.map((s) => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Amount *</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  required
-                  value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Payment Type *</label>
-                {role === "production" ? (
-                  <input
-                    type="text"
-                    disabled
-                    value="paid"
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
-                  />
-                ) : (
-                  <select
-                    required
-                    value={formData.payment_type}
-                    onChange={(e) => setFormData({ ...formData, payment_type: e.target.value })}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                  >
-                    <option value="paid">Paid</option>
-                    {role === "sales" && <option value="credit">Credit</option>}
-                    {role === "procurement" && <option value="debt">Debt</option>}
-                  </select>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Description</label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                  rows={3}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Receipt (JPG/PNG/PDF)</label>
-                <input
-                  type="file"
-                  accept=".jpg,.jpeg,.png,.pdf"
-                  multiple
-                  onChange={(e) => setReceiptFiles(Array.from(e.target.files || []))}
-                  className="mt-1 block w-full text-sm"
-                />
-              </div>
-
-              <div className="flex justify-end space-x-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowModal(false);
-                    setReceiptFiles([]);
-                  }}
-                  className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-100 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 cursor-pointer"
-                >
-                  Create
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {showPaymentModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 p-2">
-          <div className="relative top-20 mx-auto p-5 border w-full max-w-lg w-full max-w-md sm:max-w-lg md:max-w-xl shadow-lg rounded-md bg-white">
-            <h3 className="text-lg font-bold mb-4">Record Payment</h3>
-            <form onSubmit={handlePaymentSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Payment For *</label>
-                <select
-                  value={paymentForm.target}
-                  onChange={(e) =>
-                    setPaymentForm({
-                      ...paymentForm,
-                      target: e.target.value,
-                      customer_id: "",
-                      supplier_id: "",
-                    })
-                  }
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                >
-                  <option value="customer">Customer Credit</option>
-                  <option value="supplier">Supplier Debt</option>
-                </select>
-              </div>
-
-              {paymentForm.target === "customer" ? (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Customer *</label>
-                  <select
-                    required
-                    value={paymentForm.customer_id}
-                    onChange={(e) =>
-                      setPaymentForm({ ...paymentForm, customer_id: e.target.value })
-                    }
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                    className="mt-1 block w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
                   >
                     <option value="">Select customer</option>
                     {customers.map((c) => (
@@ -545,16 +475,16 @@ const Transactions = () => {
                     ))}
                   </select>
                 </div>
-              ) : (
+              )}
+
+              {role === "procurement" && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Supplier *</label>
+                  <label className="block text-sm font-medium text-slate-700">Supplier *</label>
                   <select
                     required
-                    value={paymentForm.supplier_id}
-                    onChange={(e) =>
-                      setPaymentForm({ ...paymentForm, supplier_id: e.target.value })
-                    }
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                    value={formData.supplier_id}
+                    onChange={(e) => setFormData({ ...formData, supplier_id: e.target.value })}
+                    className="mt-1 block w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
                   >
                     <option value="">Select supplier</option>
                     {suppliers.map((s) => (
@@ -567,7 +497,153 @@ const Transactions = () => {
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Amount *</label>
+                <label className="block text-sm font-medium text-slate-700">Amount *</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  required
+                  value={formData.amount}
+                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                  className="mt-1 block w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700">Payment Type *</label>
+                {role === "production" ? (
+                  <input
+                    type="text"
+                    disabled
+                    value="paid"
+                    className="mt-1 block w-full rounded-xl border border-slate-300 bg-slate-100 px-3 py-2 text-sm"
+                  />
+                ) : (
+                  <select
+                    required
+                    value={formData.payment_type}
+                    onChange={(e) => setFormData({ ...formData, payment_type: e.target.value })}
+                    className="mt-1 block w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                  >
+                    <option value="paid">Paid</option>
+                    {role === "sales" && <option value="credit">Credit</option>}
+                    {role === "procurement" && <option value="debt">Debt</option>}
+                  </select>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700">Description</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="mt-1 block w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700">
+                  Receipt (JPG/PNG/PDF)
+                </label>
+                <input
+                  type="file"
+                  accept=".jpg,.jpeg,.png,.pdf"
+                  multiple
+                  onChange={(e) => setReceiptFiles(Array.from(e.target.files || []))}
+                  className="mt-1 block w-full text-sm"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowModal(false);
+                    setReceiptFiles([]);
+                  }}
+                  className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                >
+                  Create
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showPaymentModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/50 p-2 backdrop-blur-sm">
+          <div className="relative top-16 mx-auto w-full max-w-xl rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-slate-900">Record Payment</h3>
+            <form onSubmit={handlePaymentSubmit} className="mt-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700">Payment For *</label>
+                <select
+                  value={paymentForm.target}
+                  onChange={(e) =>
+                    setPaymentForm({
+                      ...paymentForm,
+                      target: e.target.value,
+                      customer_id: "",
+                      supplier_id: "",
+                    })
+                  }
+                  className="mt-1 block w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                >
+                  <option value="customer">Customer Credit</option>
+                  <option value="supplier">Supplier Debt</option>
+                </select>
+              </div>
+
+              {paymentForm.target === "customer" ? (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">Customer *</label>
+                  <select
+                    required
+                    value={paymentForm.customer_id}
+                    onChange={(e) =>
+                      setPaymentForm({ ...paymentForm, customer_id: e.target.value })
+                    }
+                    className="mt-1 block w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                  >
+                    <option value="">Select customer</option>
+                    {customers.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">Supplier *</label>
+                  <select
+                    required
+                    value={paymentForm.supplier_id}
+                    onChange={(e) =>
+                      setPaymentForm({ ...paymentForm, supplier_id: e.target.value })
+                    }
+                    className="mt-1 block w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                  >
+                    <option value="">Select supplier</option>
+                    {suppliers.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700">Amount *</label>
                 <input
                   type="number"
                   step="0.01"
@@ -577,24 +653,26 @@ const Transactions = () => {
                   onChange={(e) =>
                     setPaymentForm({ ...paymentForm, amount: e.target.value })
                   }
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                  className="mt-1 block w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Description</label>
+                <label className="block text-sm font-medium text-slate-700">Description</label>
                 <textarea
                   value={paymentForm.description}
                   onChange={(e) =>
                     setPaymentForm({ ...paymentForm, description: e.target.value })
                   }
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                  className="mt-1 block w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
                   rows={3}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Receipt (JPG/PNG/PDF)</label>
+                <label className="block text-sm font-medium text-slate-700">
+                  Receipt (JPG/PNG/PDF)
+                </label>
                 <input
                   type="file"
                   accept=".jpg,.jpeg,.png,.pdf"
@@ -604,20 +682,20 @@ const Transactions = () => {
                 />
               </div>
 
-              <div className="flex justify-end space-x-2">
+              <div className="flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => {
                     setShowPaymentModal(false);
                     setPaymentReceipts([]);
                   }}
-                  className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-100 cursor-pointer"
+                  className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 cursor-pointer"
+                  className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
                 >
                   Record
                 </button>
@@ -628,43 +706,45 @@ const Transactions = () => {
       )}
 
       {actionModal.open && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
-            <h3 className="text-lg font-bold mb-4">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/50 p-2 backdrop-blur-sm">
+          <div className="relative top-16 mx-auto w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-slate-900">
               {actionModal.type === "approve"
                 ? "Approve Transaction"
                 : actionModal.type === "accountant-approve"
                 ? "Accountant Approve"
                 : "Reject Transaction"}
             </h3>
-            <form onSubmit={handleActionSubmit} className="space-y-4">
+            <form onSubmit={handleActionSubmit} className="mt-4 space-y-4">
               {actionModal.type === "reject" && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Rejection Reason</label>
+                  <label className="block text-sm font-medium text-slate-700">
+                    Rejection Reason
+                  </label>
                   <textarea
                     value={rejectionReason}
                     onChange={(e) => setRejectionReason(e.target.value)}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                    className="mt-1 block w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
                     rows={3}
                   />
                 </div>
               )}
-              <div className="flex justify-end space-x-2">
+              <div className="flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={closeActionModal}
-                  className="px-4 py-2 border border-gray-300 rounded-md"
+                  className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className={`px-4 py-2 text-white rounded-md ${
+                  className={`rounded-xl px-4 py-2 text-sm font-semibold text-white ${
                     actionModal.type === "approve"
-                      ? "bg-green-600 hover:bg-green-700"
+                      ? "bg-emerald-600 hover:bg-emerald-700"
                       : actionModal.type === "accountant-approve"
                       ? "bg-blue-600 hover:bg-blue-700"
-                      : "bg-red-600 hover:bg-red-700"
+                      : "bg-rose-600 hover:bg-rose-700"
                   }`}
                 >
                   Confirm
@@ -674,9 +754,16 @@ const Transactions = () => {
           </div>
         </div>
       )}
-
     </div>
   );
 };
+
+const Th = ({ children }) => (
+  <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+    {children}
+  </th>
+);
+
+const Td = ({ children }) => <td className="px-6 py-4 text-sm text-slate-700">{children}</td>;
 
 export default Transactions;

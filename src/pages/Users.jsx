@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import { normalizeRole } from '../contexts/AuthContext';
 import api from '../lib/api';
 
 const Users = () => {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -40,6 +42,20 @@ const Users = () => {
     }
   };
 
+  const handleDelete = async (userToDelete) => {
+    const confirmed = window.confirm(
+      `Delete ${userToDelete.full_name || userToDelete.email}? This will deactivate the account.`
+    );
+    if (!confirmed) return;
+
+    try {
+      await api.delete(`/users/${userToDelete.id}`);
+      fetchUsers();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete user');
+    }
+  };
+
   if (loading) {
     return <div className="text-center py-8">Loading...</div>;
   }
@@ -66,13 +82,24 @@ const Users = () => {
                     <p className="text-sm text-gray-500">{user.email}</p>
                     <p className="text-sm text-gray-500">Role: {normalizeRole(user.role)}</p>
                   </div>
-                  <span
-                    className={`px-2 py-1 text-xs rounded ${
-                      user.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}
-                  >
-                    {user.is_active ? 'Active' : 'Inactive'}
-                  </span>
+                  <div className="flex items-center space-x-3">
+                    <span
+                      className={`px-2 py-1 text-xs rounded ${
+                        user.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}
+                    >
+                      {user.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                    {currentUser?.id !== user.id && user.is_active && (
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(user)}
+                        className="px-3 py-1 text-xs rounded-md bg-red-600 text-white hover:bg-red-700"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </li>
