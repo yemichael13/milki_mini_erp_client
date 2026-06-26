@@ -71,7 +71,7 @@ const AppRoutes = () => {
       <Route
         path="/production-inventory"
         element={
-          <ProtectedRoute allowedRoles={["production_recorder", "production_approver", "general_manager", "accountant", "system_admin"]}>
+          <ProtectedRoute allowedRoles={["production_recorder", "production_approver", "general_manager", "accountant"]}>
             <Layout>
               <ProductionInventory />
             </Layout>

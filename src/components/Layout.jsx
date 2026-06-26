@@ -62,7 +62,7 @@ const Layout = ({ children }) => {
                     Transactions
                   </Link>
                 )}
-                {canAccess(['production_recorder', 'production_approver', 'general_manager', 'accountant', 'system_admin']) && (
+                {canAccess(['production_recorder', 'production_approver', 'general_manager', 'accountant']) && (
                   <Link
                     to="/production-inventory"
                     className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
