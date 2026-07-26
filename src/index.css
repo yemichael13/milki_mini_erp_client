@@ -1,1 +1,111 @@
 @import "tailwindcss";
+
+:root {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  background: rgb(248 250 252);
+  color: rgb(15 23 42);
+}
+
+:root[data-theme='dark'] body {
+  background: rgb(2 6 23);
+  color: rgb(226 232 240);
+}
+
+:root[data-theme='dark'] .bg-white {
+  background-color: rgb(15 23 42);
+}
+
+:root[data-theme='dark'] [class~='bg-white/90'] {
+  background-color: rgb(15 23 42 / 0.92);
+}
+
+:root[data-theme='dark'] [class~='bg-white/80'] {
+  background-color: rgb(15 23 42 / 0.84);
+}
+
+:root[data-theme='dark'] .bg-gray-50,
+:root[data-theme='dark'] .bg-slate-50 {
+  background-color: rgb(15 23 42);
+}
+
+:root[data-theme='dark'] .bg-gray-100,
+:root[data-theme='dark'] .bg-slate-100 {
+  background-color: rgb(30 41 59);
+}
+
+:root[data-theme='dark'] .bg-gray-200,
+:root[data-theme='dark'] .bg-slate-200 {
+  background-color: rgb(51 65 85);
+}
+
+:root[data-theme='dark'] .border-gray-200,
+:root[data-theme='dark'] .border-slate-200 {
+  border-color: rgb(51 65 85);
+}
+
+:root[data-theme='dark'] .border-gray-300,
+:root[data-theme='dark'] .border-slate-300 {
+  border-color: rgb(71 85 105);
+}
+
+:root[data-theme='dark'] .divide-gray-200,
+:root[data-theme='dark'] .divide-slate-200 {
+  border-color: rgb(51 65 85);
+}
+
+:root[data-theme='dark'] .divide-slate-100 {
+  border-color: rgb(30 41 59);
+}
+
+:root[data-theme='dark'] .text-gray-900,
+:root[data-theme='dark'] .text-slate-900 {
+  color: rgb(248 250 252);
+}
+
+:root[data-theme='dark'] .text-gray-800,
+:root[data-theme='dark'] .text-slate-800 {
+  color: rgb(226 232 240);
+}
+
+:root[data-theme='dark'] .text-gray-700,
+:root[data-theme='dark'] .text-slate-700 {
+  color: rgb(203 213 225);
+}
+
+:root[data-theme='dark'] .text-gray-600,
+:root[data-theme='dark'] .text-slate-600 {
+  color: rgb(148 163 184);
+}
+
+:root[data-theme='dark'] .text-gray-500,
+:root[data-theme='dark'] .text-slate-500 {
+  color: rgb(100 116 139);
+}
+
+:root[data-theme='dark'] .hover\:bg-gray-100:hover,
+:root[data-theme='dark'] .hover\:bg-slate-50:hover {
+  background-color: rgb(30 41 59);
+}
+
+:root[data-theme='dark'] .from-white {
+  --tw-gradient-from: rgb(15 23 42) var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(15 23 42 / 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
+:root[data-theme='dark'] .to-slate-50 {
+  --tw-gradient-to: rgb(15 23 42) var(--tw-gradient-to-position);
+}

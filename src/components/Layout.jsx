@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth, normalizeRole } from '../contexts/AuthContext';
+import ThemeToggle from './ThemeToggle';
 import Logo from '../assets/logo.png';
 
 const Layout = ({ children }) => {
@@ -23,7 +24,7 @@ const Layout = ({ children }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex">
-              <div className="shrink-0 flex items-center">
+              <div className="shrink-0 flex items-center mr-4">
                
                 <h1 className="text-xl font-bold text-gray-900 md:block hidden">Milki Financial System</h1>
                 <h1 className='text-sm font-semibold text-gray-900 md:hidden mr-4'>Milki<br />Financial<br />System</h1>
@@ -89,16 +90,19 @@ const Layout = ({ children }) => {
                 )}
               </div>
             </div>
-            <div className="flex items-center">
-              <span className="text-sm text-gray-700 mr-4">
+            <div className="flex items-center ml-4">
+              
+              <span className="text-sm text-gray-700 ml-2">
                 {user?.full_name} ({user?.role})
               </span>
+              <ThemeToggle className="" />
               <button
                 onClick={handleLogout}
-                className="bg-red-500 hover:bg-red-800 text-white px-4 py-2 rounded-md text-sm font-medium cursor-pointer"
+                className="bg-red-500 hover:bg-red-800 ml-4 text-white px-4 py-2 rounded-md text-sm font-medium cursor-pointer"
               >
                 Logout
               </button>
+              
             </div>
           </div>
         </div>
