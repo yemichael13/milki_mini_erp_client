@@ -1,157 +1,145 @@
-# Mini ERP Client (React + Vite)
+# Milki ERP Client
 
-Frontend for the Mini ERP system. This app handles authentication, role-based navigation, dashboards, and transaction workflows for Sales, Procurement, Production, Accountant, General Manager, and System Admin roles.
+Frontend for the Milki ERP system built with React and Vite. The client provides the public welcome page, authentication flow, role-based dashboard, and the UI for core ERP workspaces.
 
 ## What This Client Does
 
-- Authenticates users and stores JWT + user profile in localStorage
-- Enforces role-based route access on the client
-- Provides role-specific dashboards and transaction workflows
-- Lets officers create transactions (sales/procurement/production)
-- Lets accountants approve or reject pending transactions
-- Lets managers approve/reject accountant-approved transactions
-- Lets managers record credit/debt payments that immediately affect balances
-- Shows credit/debt and reports for authorized roles
-- Shows multi-file receipt links for each transaction
+- Shows a professional welcome page at `/`
+- Keeps the existing sign-in page at `/login`
+- Supports dark mode with persistence and system preference fallback
+- Authenticates users and stores the JWT and user profile in localStorage
+- Routes users to role-based dashboards after login
+- Displays transactions, reports, customers, suppliers, production inventory, and user management screens
+- Uses role-aware navigation and protected routes
 
 ## Tech Stack
 
-- React (Vite)
-- Tailwind CSS
+- React 19
+- Vite
+- Tailwind CSS 4
 - React Router
 - Axios
 
-## Environment
+## Prerequisites
 
-Create `client/.env` (copy from `.env.example`):
+- Node.js 18 or newer
+- A running Milki ERP backend API
 
-```
+## Environment Setup
+
+Create `client/.env` from `client/.env.example`:
+
+```env
 VITE_API_URL=http://localhost:5000/api
 ```
 
-## Install and Run
+Set `VITE_API_URL` to the deployed backend API when building for production.
 
-```
+## Local Development
+
+```bash
 npm install
 npm run dev
 ```
 
-App runs at `http://localhost:5173` by default.
+The app runs on `http://localhost:5173` by default.
 
-## Build
+## Production Build
 
-```
+```bash
 npm run build
 ```
 
-## App Structure
+This generates a static production build in `dist/`.
 
+To preview the production build locally:
+
+```bash
+npm run preview
 ```
+
+## Deployment Notes
+
+- Deploy `dist/` to any static hosting platform or CDN.
+- Make sure the backend API is reachable from the deployed client.
+- Update `VITE_API_URL` before building if the backend is not running on `http://localhost:5000/api`.
+- The client relies on browser localStorage for the JWT, user profile, and theme preference.
+
+## Route Map
+
+- `/` - public welcome / landing page
+- `/login` - existing login page
+- `/dashboard` - authenticated dashboard
+- `/customers` - customers workspace
+- `/suppliers` - suppliers workspace
+- `/transactions` - transactions workspace
+- `/transactions/:id` - transaction detail page
+- `/reports` - reports page
+- `/production-inventory` - production inventory workspace
+- `/users` - system admin user management
+
+## Current UI Structure
+
+```text
 src/
   components/
-    Layout.jsx          # Shell layout and nav
-    ProtectedRoute.jsx  # Route guard + role checks
+    Layout.jsx          # Main app shell and navigation
+    ProtectedRoute.jsx  # Route guard
+    ThemeToggle.jsx     # Light/dark mode toggle
   contexts/
-    AuthContext.jsx     # Login/logout, token storage, role normalization
+    AuthContext.jsx     # Login, logout, token handling
+    ThemeContext.jsx    # Theme persistence and toggle state
   lib/
-    api.js              # Axios instance + auth interceptors
+    api.js              # Axios instance
   pages/
-    Login.jsx           # Sign in
-    Dashboard.jsx       # Role-based dashboards
-    Customers.jsx       # Customers (sales can create; others read-only)
-    Suppliers.jsx       # Suppliers (procurement can create; others read-only)
-    Transactions.jsx    # Create + approve + record payment
-    Reports.jsx         # CSV/JSON report exports
-    Users.jsx           # System admin user management
-  App.jsx               # Routing
-  main.jsx              # Entry
+    Welcome.jsx         # Public landing page
+    Login.jsx           # Existing sign-in page
+    Dashboard.jsx       # Role-based dashboard
+    Customers.jsx
+    Suppliers.jsx
+    Transactions.jsx
+    TransactionDetail.jsx
+    Reports.jsx
+    ProductionInventory.jsx
+    Users.jsx
+  App.jsx               # Router setup
+  main.jsx              # App entry point
 ```
 
-## Authentication and Session
+## Authentication Flow
 
-- Login uses `POST /api/auth/login` and stores the JWT in localStorage.
-- On app load, `GET /api/auth/me` validates the token.
-- If the token expires, the app clears storage and redirects to `/login`.
+- Unauthenticated users see the welcome page at `/`
+- The Login button sends them to `/login`
+- Successful login stores the token and user profile in localStorage
+- Authenticated users are redirected to `/dashboard`
+- Token validation happens on app load through the existing auth context
 
 ## Role Normalization
 
-The UI normalizes roles for consistency:
+The app normalizes backend role names for consistency:
 
-- `admin` (DB) is shown and treated as `system_admin`
-- roles ending with `_officer` are normalized to the base role (e.g., `sales_officer` ? `sales`)
+- `admin` becomes `system_admin`
+- `manager` becomes `general_manager`
+- roles ending in `_officer` are normalized to the base role
 
-## Routing and Role Access
+## Dark Mode
 
-- `/dashboard`: all authenticated users
-- `/customers`: sales, accountant, general_manager
-- `/suppliers`: procurement, accountant, general_manager
-- `/transactions`: sales, procurement, production, accountant, general_manager
-- `/reports`: accountant, general_manager
-- `/users`: system_admin only
+- Theme choice is stored in localStorage
+- The app uses the user’s system preference on first visit
+- A theme toggle is available in the welcome page, login page, and app shell
 
-## Key Pages and Behavior
+## Build and Deployment Checklist
 
-### Dashboard
-Each role sees a tailored dashboard:
+- Confirm `VITE_API_URL` points to the correct backend
+- Run `npm run build`
+- Serve the generated `dist/` folder
+- Verify `/` opens the welcome page
+- Verify `/login` opens the existing login screen
+- Verify authenticated routes still work after login
 
-- Sales: sales totals, customer credit, pending approvals
-- Procurement: supplier debt, procurement totals, pending approvals
-- Production: production expenses
-- Accountant: all transactions + credit/debt summary
-- General Manager: pending approvals + cross-department summary + credit/debt
-- System Admin: user management entry point
+## Notes for Developers
 
-### Customers / Suppliers
-
-- Sales can create customers; managers/accountants can view only
-- Procurement can create suppliers; managers/accountants can view only
-
-### Transactions
-
-#### Officer creation
-- Sales: customer, amount, payment type (paid/credit), description, receipts
-- Procurement: supplier, amount, payment type (paid/debt), description, receipts
-- Production: amount, description, receipts (payment type is always paid)
-
-#### Accountant approval
-- Accountants can approve or reject **pending** transactions
-- Approve ? `accountant_approved`
-- Reject ? `rejected`
-
-#### Manager approval
-- Managers can approve or reject **accountant_approved** transactions
-- Approve ? `manager_approved`
-- Reject ? `rejected`
-
-#### Manager record payment
-- Managers can record a payment directly (customer credit or supplier debt)
-- These entries are saved as **manager_approved paid transactions**
-- Immediately affects credit/debt balances
-
-#### Receipts (multi-file)
-- Users can attach multiple receipt files to a single transaction
-- The UI renders multiple links (View 1, View 2, ...)
-
-## API Integration (Client Side)
-
-- All requests are sent via `src/lib/api.js`
-- The Authorization header is added automatically
-- `FormData` requests do not set `Content-Type` manually (lets the browser set boundary)
-
-## Common Dev Tips
-
-- If you change backend port or base path, update `VITE_API_URL`
-- If role permissions change, update `ProtectedRoute` or per-page logic
-
-```
-`ProtectedRoute` enforces role access, but server-side permissions remain authoritative.
-```
-
-## Known Defaults
-
-- Backend URL: `http://localhost:5000/api`
-- Frontend URL: `http://localhost:5173`
-
-## Change Control
-
-This README documents the current behavior of the client. Backend rules are enforced server-side; the UI is aligned to those rules but does not replace them.
+- Do not change protected-route logic without updating the backend permissions too
+- Keep API URLs in `src/lib/api.js` aligned with the deployed backend
+- If you change the backend domain or path, rebuild the client with the updated environment file
+- The frontend does not replace server-side authorization
