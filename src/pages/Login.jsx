@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import ThemeToggle from '../components/ThemeToggle';
 import Logo from '../assets/logo.png';
+import { Link } from 'react-router-dom';
 
 const features = [
   {
@@ -244,6 +245,7 @@ const Login = () => {
                   )}
                 </button>
               </form>
+              <div className="mt-4 text-right"><Link className="text-sm text-slate-600 underline" to="/forgot-password">Forgot password?</Link></div>
 
               <div className="mt-6 rounded-2xl bg-slate-50 px-4 py-3">
                 <p className="text-xs leading-5 text-slate-500">

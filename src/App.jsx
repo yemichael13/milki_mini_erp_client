@@ -13,6 +13,9 @@ import Users from './pages/Users';
 import Suppliers from './pages/Suppliers';
 import ProductionInventory from './pages/ProductionInventory';
 import TransactionDetail from './pages/TransactionDetail';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import VerifyEmail from './pages/VerifyEmail';
 
 const AppRoutes = () => {
   const { user } = useAuth();
@@ -20,6 +23,9 @@ const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/verify-email" element={<VerifyEmail />} />
       <Route
         path="/dashboard"
         element={

@@ -3,8 +3,10 @@ import { useAuth, normalizeRole } from "../contexts/AuthContext";
 import api from "../lib/api";
 
 const today = () => new Date().toISOString().slice(0, 10);
+const displayProductName = (product) => product.inventory_type === "INPUT" && product.product_type === "Maize" ? "Raw Maize" : product.product_type;
 
 const emptyForms = () => ({
+  input: { product_id: "", movement_type: "receipt", quantity_quintal: "", movement_date: today(), description: "" },
   production: {
     product_id: "",
     quantity_pieces: "",
@@ -40,7 +42,8 @@ const emptyFilters = () => ({
 
 const tabs = [
   { key: "dashboard", label: "Dashboard" },
-  { key: "products", label: "Products" },
+  { key: "products", label: "Input / Output Products" },
+  { key: "inputs", label: "Input Materials" },
   { key: "production", label: "Production Records" },
   { key: "release", label: "Product Releases" },
   { key: "return", label: "Product Returns" },
@@ -94,6 +97,7 @@ const ProductionInventory = () => {
     release: [],
     return: [],
   });
+  const [inputMovements, setInputMovements] = useState([]);
 
   const [filters, setFilters] = useState(emptyFilters);
   const [forms, setForms] = useState(emptyForms);
@@ -119,16 +123,18 @@ const ProductionInventory = () => {
     setRefreshing(true);
     try {
       const params = buildParams();
-      const [productsRes, inventoryRes, reportsRes, productionRes, releaseRes, returnRes] = await Promise.all([
+      const [productsRes, inventoryRes, reportsRes, inputRes, productionRes, releaseRes, returnRes] = await Promise.all([
         api.get("/products", { params: { is_active: true } }),
         api.get("/inventory"),
         api.get("/inventory/reports", { params }),
+        api.get("/input-movements"),
         api.get("/production-records", { params }),
         api.get("/product-releases", { params }),
         api.get("/product-returns", { params }),
       ]);
 
       setProducts(productsRes.data);
+      setInputMovements(inputRes.data);
       setInventory(inventoryRes.data);
       setReports(reportsRes.data);
       setRecords({
@@ -153,6 +159,27 @@ const ProductionInventory = () => {
     () => Array.from(new Set(products.map((product) => product.product_type))),
     [products]
   );
+
+  const inputProducts = useMemo(
+    () => products.filter((product) => product.inventory_type === "INPUT"),
+    [products]
+  );
+
+  const outputProducts = useMemo(
+    () => products.filter((product) => product.inventory_type !== "INPUT"),
+    [products]
+  );
+
+  const inputBalances = useMemo(() => {
+    const balances = new Map(inputProducts.map((product) => [product.id, { product, pieces: 0, quintals: 0 }]));
+    inputMovements.filter((movement) => movement.status === "manager_approved").forEach((movement) => {
+      const current = balances.get(movement.product_id);
+      if (!current) return;
+      const sign = movement.movement_type === "issue" ? -1 : 1;
+      current.quintals += sign * Number(movement.total_weight_quintal || 0);
+    });
+    return Array.from(balances.values());
+  }, [inputMovements, inputProducts]);
 
   const packageSizes = useMemo(
     () => Array.from(new Set(products.map((product) => Number(product.package_size_kg)))).sort((a, b) => a - b),
@@ -179,6 +206,22 @@ const ProductionInventory = () => {
     } catch (err) {
       alert(err.response?.data?.message || "Failed to create record");
     }
+  };
+
+  const handleInputCreate = async () => {
+    try {
+      await api.post("/input-movements", forms.input);
+      setForms(emptyForms());
+      await fetchAll();
+    } catch (err) { alert(err.response?.data?.message || "Failed to record input movement"); }
+  };
+
+  const handleInputAction = async (movement, action) => {
+    try {
+      const endpoint = action === "approve" ? "approve" : action === "manager-approve" ? "manager-approve" : "reject";
+      await api.post(`/input-movements/${movement.id}/${endpoint}`, action === "reject" ? { rejection_reason: "Input movement rejected" } : undefined);
+      await fetchAll();
+    } catch (err) { alert(err.response?.data?.message || "Input movement action failed"); }
   };
 
   const openAction = (recordType, id, type) => {
@@ -278,7 +321,7 @@ const ProductionInventory = () => {
               required
             >
               <option value="">Select product</option>
-              {products.map((product) => (
+              {outputProducts.map((product) => (
                 <option key={product.id} value={product.id}>
                   {product.product_type} - {product.package_label}
                 </option>
@@ -444,6 +487,24 @@ const ProductionInventory = () => {
     );
   };
 
+  const renderInputSection = () => (
+    <div className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-2">{inputBalances.map(({ product, quintals }) => <div key={product.id} className="rounded-2xl border border-amber-200 bg-amber-50 p-5"><div className="text-sm font-medium text-amber-800">{displayProductName(product)} store balance</div><div className="mt-2 text-3xl font-semibold text-amber-950">{quintals.toLocaleString(undefined, { maximumFractionDigits: 2 })} quintals</div><div className="mt-1 text-sm text-amber-800">Available raw-material stock</div></div>)}</div>
+      {canCreate && <div className="rounded-2xl border border-amber-300 bg-amber-50 p-5">
+        <h3 className="text-lg font-semibold text-amber-950">Record Raw Material Movement</h3>
+        <p className="mt-1 text-sm text-amber-800">Use Receipt when material enters store, Issue when it leaves for processing, and Failed Processing Return when it comes back.</p>
+        <div className="mt-4 grid gap-4 md:grid-cols-4">
+          <select value={forms.input.product_id} onChange={(e) => setFormValue("input", "product_id", e.target.value)} className="rounded-xl border border-amber-300 px-3 py-2 text-sm" required><option value="">Raw material</option>{inputProducts.map((p) => <option key={p.id} value={p.id}>{displayProductName(p)}</option>)}</select>
+          <select value={forms.input.movement_type} onChange={(e) => setFormValue("input", "movement_type", e.target.value)} className="rounded-xl border border-amber-300 px-3 py-2 text-sm"><option value="receipt">Received into store</option><option value="issue">Issued to processing</option><option value="return">Failed processing return</option></select>
+          <input type="number" min="0.5" step="0.5" value={forms.input.quantity_quintal} onChange={(e) => setFormValue("input", "quantity_quintal", e.target.value)} className="rounded-xl border border-amber-300 px-3 py-2 text-sm" placeholder="Quantity quintals" required />
+          <input type="date" value={forms.input.movement_date} onChange={(e) => setFormValue("input", "movement_date", e.target.value)} className="rounded-xl border border-amber-300 px-3 py-2 text-sm" required />
+        </div>
+        <button type="button" onClick={handleInputCreate} className="mt-4 rounded-xl bg-amber-700 px-4 py-2 text-sm font-medium text-white hover:bg-amber-800">Record Input Movement</button>
+      </div>}
+      <div className="rounded-2xl border border-amber-200 bg-white p-5"><h3 className="text-lg font-semibold text-amber-950">Raw Material Movement Ledger</h3><div className="mt-4 overflow-x-auto"><table className="min-w-full divide-y divide-slate-200"><thead className="bg-amber-50"><tr><th className="px-4 py-3 text-left text-xs uppercase text-amber-800">Material</th><th className="px-4 py-3 text-left text-xs uppercase text-amber-800">Movement</th><th className="px-4 py-3 text-left text-xs uppercase text-amber-800">Quantity Quintals</th><th className="px-4 py-3 text-left text-xs uppercase text-amber-800">Date</th><th className="px-4 py-3 text-left text-xs uppercase text-amber-800">Status</th><th className="px-4 py-3 text-left text-xs uppercase text-amber-800">Actions</th></tr></thead><tbody className="divide-y divide-slate-200">{inputMovements.map((m) => <tr key={m.id}><td className="px-4 py-3 text-sm font-medium">{displayProductName(m)}</td><td className="px-4 py-3 text-sm capitalize">{m.movement_type === "receipt" ? "Received into store" : m.movement_type === "issue" ? "Issued to processing" : "Failed processing return"}</td><td className="px-4 py-3 text-sm">{Number(m.total_weight_quintal).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td><td className="px-4 py-3 text-sm">{m.movement_date}</td><td className="px-4 py-3 text-sm"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${badgeClasses[m.status] || "bg-slate-100 text-slate-700"}`}>{m.status}</span></td><td className="px-4 py-3 text-sm"><div className="flex gap-2">{canProductionApprove && m.status === "production_pending" && <button onClick={() => handleInputAction(m, "approve")} className="rounded bg-sky-600 px-2 py-1 text-xs text-white">Approve</button>}{canManagerApprove && ["manager_pending", "production_approved"].includes(m.status) && <button onClick={() => handleInputAction(m, "manager-approve")} className="rounded bg-emerald-600 px-2 py-1 text-xs text-white">Manager Approve</button>}</div></td></tr>)}{!inputMovements.length && <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-400">No raw-material movements recorded</td></tr>}</tbody></table></div></div>
+    </div>
+  );
+
   const inventoryCards = inventory
     ? [
         {
@@ -524,10 +585,21 @@ const ProductionInventory = () => {
         );
       case "products":
         return (
-          <div className="rounded-2xl border border-slate-200 bg-white p-5">
-            <h3 className="text-lg font-semibold text-slate-900">Product Master</h3>
-            <p className="mt-1 text-sm text-slate-500">Seeded product catalog. Manual creation is disabled.</p>
-            <div className="mt-4 overflow-x-auto">
+          <div className="space-y-6">
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+              <h3 className="text-lg font-semibold text-amber-950">Input Inventory · Raw Materials</h3>
+              <p className="mt-1 text-sm text-amber-800">Raw maize and wheat received for production. These are not finished products.</p>
+              <div className="mt-4 overflow-x-auto">
+                <table className="min-w-full divide-y divide-amber-200">
+                  <thead><tr><th className="px-4 py-3 text-left text-xs font-semibold uppercase text-amber-800">Raw Material</th><th className="px-4 py-3 text-left text-xs font-semibold uppercase text-amber-800">Package</th><th className="px-4 py-3 text-left text-xs font-semibold uppercase text-amber-800">Type</th></tr></thead>
+                  <tbody className="divide-y divide-amber-100 bg-white">{inputProducts.map((product) => <tr key={product.id}><td className="px-4 py-3 text-sm font-medium text-slate-900">{displayProductName(product)}</td><td className="px-4 py-3 text-sm text-slate-700">{product.package_label}</td><td className="px-4 py-3"><span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">INPUT</span></td></tr>)}{!inputProducts.length && <tr><td colSpan={3} className="px-4 py-6 text-center text-sm text-slate-400">No input items found</td></tr>}</tbody>
+                </table>
+              </div>
+            </div>
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+              <h3 className="text-lg font-semibold text-emerald-950">Output Inventory · Finished Products</h3>
+              <p className="mt-1 text-sm text-emerald-800">Existing finished products produced, released, and returned through the approval workflow.</p>
+              <div className="mt-4 overflow-x-auto">
               <table className="min-w-full divide-y divide-slate-200">
                 <thead className="bg-slate-50">
                   <tr>
@@ -538,7 +610,7 @@ const ProductionInventory = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
-                  {products.map((product) => (
+                  {outputProducts.map((product) => (
                     <tr key={product.id}>
                       <td className="px-4 py-3 text-sm text-slate-900">{product.product_type}</td>
                       <td className="px-4 py-3 text-sm text-slate-700">{product.package_label}</td>
@@ -546,12 +618,13 @@ const ProductionInventory = () => {
                       <td className="px-4 py-3 text-sm text-slate-700">
                         <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${product.is_active ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"}`}>
                           {product.is_active ? "Active" : "Inactive"}
-                        </span>
+                        </span> <span className="ml-2 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800">OUTPUT</span>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           </div>
         );
@@ -559,6 +632,8 @@ const ProductionInventory = () => {
       case "release":
       case "return":
         return renderRecordSection(activeTab);
+      case "inputs":
+        return renderInputSection();
       case "reports":
         return (
           <div className="space-y-6">
