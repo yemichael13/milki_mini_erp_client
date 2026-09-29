@@ -86,7 +86,7 @@ const Reports = () => {
           </div>
         </div>
       )}
-      <div className="mb-6 flex space-x-4">
+      <div className="mb-6 flex flex-wrap gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700">From Date</label>
           <input

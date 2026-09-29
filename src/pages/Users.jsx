@@ -108,7 +108,7 @@ const Users = () => {
       </div>
       {showModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="mx-4 p-5 border w-full max-w-md sm:max-w-lg md:max-w-xl shadow-lg rounded-md bg-white">
+          <div className="mx-4 max-h-[90vh] w-full max-w-md overflow-y-auto rounded-md border bg-white p-5 shadow-lg sm:max-w-lg md:max-w-xl">
             <h3 className="text-lg font-bold mb-4">Add User</h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -157,7 +157,6 @@ const Users = () => {
                   <option value="production_approver">Production Approver</option>
                   <option value="accountant">Accountant</option>
                   <option value="general_manager">General Manager</option>
-                  <option value="manager">Manager</option>
                   <option value="system_admin">System Admin</option>
                 </select>
               </div>

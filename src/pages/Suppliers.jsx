@@ -9,6 +9,9 @@ const Suppliers = () => {
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', address: '' });
   const [search, setSearch] = useState('');
+  const [debtBalances, setDebtBalances] = useState({});
+  const [debtLoading, setDebtLoading] = useState(null);
+  const [debtError, setDebtError] = useState({});
   const canCreate = user?.role === 'procurement';
 
   useEffect(() => {
@@ -39,13 +42,14 @@ const Suppliers = () => {
   };
 
   const viewDebt = async (supplierId) => {
+    setDebtLoading(supplierId);
+    setDebtError((previous) => ({ ...previous, [supplierId]: '' }));
     try {
       const res = await api.get(`/suppliers/${supplierId}`, { params: { debt: true } });
-      const bal = Number(res.data.debt_balance || 0);
-      alert(`Supplier debt balance: ${bal.toLocaleString()}`);
+      setDebtBalances((previous) => ({ ...previous, [supplierId]: Number(res.data.debt_balance || 0) }));
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to load supplier debt');
-    }
+      setDebtError((previous) => ({ ...previous, [supplierId]: err.response?.data?.message || 'Failed to load supplier debt' }));
+    } finally { setDebtLoading(null); }
   };
 
   if (loading) {
@@ -88,11 +92,13 @@ const Suppliers = () => {
                   <button
                     type="button"
                     onClick={() => viewDebt(supplier.id)}
-                    className="text-indigo-600 hover:text-indigo-900 text-sm"
+                    className="rounded-md border border-indigo-200 px-3 py-2 text-sm text-indigo-600 hover:bg-indigo-50"
                   >
-                    View Debt
+                    {debtLoading === supplier.id ? 'Loading...' : debtBalances[supplier.id] !== undefined ? 'Refresh Debt' : 'View Debt'}
                   </button>
                 </div>
+                {debtBalances[supplier.id] !== undefined && <div className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">Debt balance: <span className="font-semibold">{debtBalances[supplier.id].toLocaleString()}</span></div>}
+                {debtError[supplier.id] && <div className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{debtError[supplier.id]}</div>}
               </div>
             </li>
           ))}
@@ -100,7 +106,7 @@ const Suppliers = () => {
       </div>
       {showModal && canCreate && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 p-2">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg w-full max-w-md sm:max-w-lg md:max-w-xl rounded-md bg-white">
+          <div className="relative mx-auto max-h-[90vh] w-full max-w-md overflow-y-auto rounded-md border bg-white p-5 shadow-lg sm:max-w-lg md:max-w-xl">
             <h3 className="text-lg font-bold mb-4">Add Supplier</h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>

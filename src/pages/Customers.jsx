@@ -9,6 +9,9 @@ const Customers = () => {
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', address: '' });
   const [search, setSearch] = useState('');
+  const [creditBalances, setCreditBalances] = useState({});
+  const [creditLoading, setCreditLoading] = useState(null);
+  const [creditError, setCreditError] = useState({});
   const canCreate = user?.role === 'sales';
 
   useEffect(() => {
@@ -39,13 +42,14 @@ const Customers = () => {
   };
 
   const viewCredit = async (customerId) => {
+    setCreditLoading(customerId);
+    setCreditError((previous) => ({ ...previous, [customerId]: '' }));
     try {
       const res = await api.get(`/customers/${customerId}?credit=true`);
-      const bal = Number(res.data.credit_balance || 0);
-      alert(`Customer credit balance: ${bal.toLocaleString()}`);
+      setCreditBalances((previous) => ({ ...previous, [customerId]: Number(res.data.credit_balance || 0) }));
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to load customer credit');
-    }
+      setCreditError((previous) => ({ ...previous, [customerId]: err.response?.data?.message || 'Failed to load customer credit' }));
+    } finally { setCreditLoading(null); }
   };
 
   if (loading) {
@@ -88,11 +92,13 @@ const Customers = () => {
                   <button
                     type="button"
                     onClick={() => viewCredit(customer.id)}
-                    className="text-indigo-600 hover:text-indigo-900 text-sm"
+                    className="rounded-md border border-indigo-200 px-3 py-2 text-sm text-indigo-600 hover:bg-indigo-50"
                   >
-                    View Credit
+                    {creditLoading === customer.id ? 'Loading...' : creditBalances[customer.id] !== undefined ? 'Refresh Credit' : 'View Credit'}
                   </button>
                 </div>
+                {creditBalances[customer.id] !== undefined && <div className="mt-3 rounded-lg bg-indigo-50 px-3 py-2 text-sm text-indigo-900">Credit balance: <span className="font-semibold">{creditBalances[customer.id].toLocaleString()}</span></div>}
+                {creditError[customer.id] && <div className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{creditError[customer.id]}</div>}
               </div>
             </li>
           ))}
@@ -100,7 +106,7 @@ const Customers = () => {
       </div>
       {showModal && canCreate && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 p-2">
-          <div className="relative top-20 mx-auto p-5 border w-96 w-full max-w-md sm:max-w-lg md:max-w-xl shadow-lg rounded-md bg-white">
+          <div className="relative mx-auto max-h-[90vh] w-full max-w-md overflow-y-auto rounded-md border bg-white p-5 shadow-lg sm:max-w-lg md:max-w-xl">
             <h3 className="text-lg font-bold mb-4">Add Customer</h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
